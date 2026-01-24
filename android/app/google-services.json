@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "439615398094",
+    "project_id": "mechresqapp",
+    "storage_bucket": "mechresqapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439615398094:android:cbe343cf87851cb7ccb09f",
+        "android_client_info": {
+          "package_name": "com.example.appmechresq"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "439615398094-im9t3dn0kstukok7nouou92r0blp2ji9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.appmechresq",
+            "certificate_hash": "fb9bddc3149932fd5992de50369d61f07f0278cc"
+          }
+        },
+        {
+          "client_id": "439615398094-hmnoblml41eboh8m3eo39v5b19mfr8bu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0U_VYiALpHhWMUKEDSExDlNPFXAlWcqA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "439615398094-hmnoblml41eboh8m3eo39v5b19mfr8bu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
