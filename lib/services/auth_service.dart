@@ -26,6 +26,7 @@ class AuthService {
   }
 
   // ✅ REGISTER MECHANIC
+  /// [shopLat], [shopLng], [shopAddress] are optional; when provided they are stored for backend only (distance sorting, eligibility). Not shown as pins to users.
   Future<void> registerMechanic({
     required String name,
     required String email,
@@ -34,6 +35,13 @@ class AuthService {
     required String shopName,
     required String vehicleTypes,
     required String address,
+    double? shopLat,
+    double? shopLng,
+    String? shopAddress,
+    String? idType,
+    String? idNumber,
+    String? idFileName,
+    
   }) async {
     await _auth.createUserWithEmailAndPassword(email: email, password: password);
 
@@ -50,6 +58,12 @@ class AuthService {
       shopName: shopName,
       vehicleTypes: vehicleTypesList,
       address: address,
+      shopLat: shopLat,
+      shopLng: shopLng,
+      shopAddress: shopAddress,
+      idType: idType,
+      idNumber: idNumber,
+      idFileName: idFileName,
     );
   }
 

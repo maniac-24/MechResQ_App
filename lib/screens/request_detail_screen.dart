@@ -1,284 +1,277 @@
-// lib/screens/request_detail_screen.dart
 import 'package:flutter/material.dart';
-import '../services/request_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RequestDetailScreen extends StatelessWidget {
-  /// Accepts the request data map either via constructor or via
-  /// ModalRoute.of(context).settings.arguments.
   final Map<String, dynamic>? data;
-
   const RequestDetailScreen({super.key, this.data});
 
-  Map<String, dynamic> _resolveData(BuildContext context) {
-    final fromRoute = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    return (data ?? fromRoute) ?? <String, dynamic>{};
+  Map<String, dynamic> _resolve(BuildContext context) {
+    return data ??
+        (ModalRoute.of(context)?.settings.arguments
+                as Map<String, dynamic>?) ??
+        {};
   }
 
-  Widget _buildMechanicCard(Map<String, dynamic> mech, BuildContext context) {
-    final yellow = Theme.of(context).colorScheme.primary;
-    final name = mech['name'] ?? 'N/A';
-    final garage = mech['garageName'] ?? '';
-    final exp = mech['experienceYears']?.toString() ?? '—';
-    final types = (mech['vehicleTypes'] is List) ? (mech['vehicleTypes'] as List).join(', ') : (mech['vehicleTypes']?.toString() ?? '');
-    final rating = mech['rating']?.toString() ?? '—';
-    final distance = mech['distanceKm']?.toString() ?? '—';
-    final phone = mech['phone'] ?? 'N/A';
-
-    return Card(
-      color: const Color(0xFF1B1B1B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: yellow,
-                  child: Text(name.isNotEmpty ? name[0] : 'M', style: const TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(garage, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    Text(name, style: const TextStyle(color: Colors.white70)),
-                  ]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              Chip(label: Text('Exp: $exp yrs')),
-              Chip(label: Text('Types: $types')),
-              Chip(label: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.star, size: 14, color: Colors.amber), SizedBox(width: 6), Text(rating)])),
-              Chip(label: Text('$distance km')),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Icon(Icons.phone_android, color: Colors.white70),
-              const SizedBox(width: 8),
-              Text(phone, style: const TextStyle(color: Colors.white70)),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Call $phone (simulated)')));
-                },
-                icon: const Icon(Icons.call, color: Colors.black),
-                label: const Text('Call', style: TextStyle(color: Colors.black)),
-                style: ElevatedButton.styleFrom(backgroundColor: yellow),
-              )
-            ]),
-            const SizedBox(height: 12),
-            Text('Notes', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Text(
-              mech['notes'] ?? 'No additional notes provided by mechanic.',
-              style: const TextStyle(color: Colors.white60),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImages(List<dynamic> images) {
-    if (images.isEmpty) {
-      return Center(child: Text('No images attached', style: TextStyle(color: Colors.white70)));
+  // =====================================================
+  // ATTACHMENTS GRID
+  // =====================================================
+  Widget _buildAttachments(
+    BuildContext context,
+    String requestId,
+    List attachments,
+  ) {
+    if (attachments.isEmpty) {
+      return const Text('No attachments uploaded',
+          style: TextStyle(color: Colors.white70));
     }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: images.map<Widget>((img) {
-        final name = img?.toString() ?? 'photo.jpg';
-        return Container(
-          width: 120,
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.white12,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Center(
-            child: Text(name, textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12)),
-          ),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: attachments.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (_, i) {
+        final att = Map<String, dynamic>.from(attachments[i]);
+        return _AttachmentTile(
+          requestId: requestId,
+          attachment: att,
         );
-      }).toList(),
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> req = _resolveData(context);
-    final mechanic = req['mechanic'] is Map<String, dynamic> ? Map<String, dynamic>.from(req['mechanic']) : <String, dynamic>{};
-    final issue = req['issue'] ?? '';
-    final images = req['images'] is List ? List.from(req['images']) : <dynamic>[];
-    final status = (req['status'] ?? 'pending').toString();
-    final createdAt = req['createdAt'] is DateTime ? req['createdAt'] as DateTime : (req['createdAt'] != null ? DateTime.tryParse(req['createdAt'].toString()) : null);
-
-    final createdStr = createdAt != null ? '${createdAt.toLocal()}'.split('.').first : (req['createdAt']?.toString() ?? 'Unknown');
+    final req = _resolve(context);
+    final attachments =
+        req['attachments'] is List ? List.from(req['attachments']) : [];
+    final requestId = req['requestId'];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Request Detail'),
-      ),
+      appBar: AppBar(title: const Text('Request Details')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000),
+        padding: const EdgeInsets.all(16),
+        child: Card(
+          color: const Color(0xFF1B1B1B),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header: status + created time
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text('Request • ${status.toUpperCase()}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                    Text(createdStr, style: const TextStyle(color: Colors.white70)),
-                  ],
-                ),
+                const Text('Attachments',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-
-                // Responsive two-column layout
-                LayoutBuilder(builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 820;
-                  if (isWide) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left: mechanic / service details (takes 40%)
-                        Expanded(flex: 4, child: _buildMechanicCard(mechanic, context)),
-                        const SizedBox(width: 12),
-
-                        // Right: request details (takes 6)
-                        Expanded(
-                          flex: 6,
-                          child: Card(
-                            color: const Color(0xFF1B1B1B),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Your Details', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  Text('Issue', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 6),
-                                  Text(issue, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                                  const SizedBox(height: 12),
-                                  Text('Attached Images', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 8),
-                                  _buildImages(images),
-                                  const SizedBox(height: 14),
-                                  Text('Actions', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: () {
-                                            // simulate cancel
-                                            if (req['id'] != null) {
-                                              RequestService.update(req['id'], {'status': 'cancelled'});
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled (simulated)')));
-                                            } else {
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled (simulated)')));
-                                            }
-                                            Navigator.pop(context);
-                                          },
-                                          icon: const Icon(Icons.cancel, color: Colors.black),
-                                          label: const Text('Cancel Request', style: TextStyle(color: Colors.black)),
-                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      OutlinedButton.icon(
-                                        onPressed: () {
-                                          // simulate reassign (just go back to mechanics list)
-                                          Navigator.pushNamed(context, '/home', arguments: {'prefillIssue': issue});
-                                        },
-                                        icon: const Icon(Icons.repeat),
-                                        label: const Text('Request Another'),
-                                      )
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  } else {
-                    // stacked layout for narrow screens
-                    return Column(
-                      children: [
-                        _buildMechanicCard(mechanic, context),
-                        const SizedBox(height: 12),
-                        Card(
-                          color: const Color(0xFF1B1B1B),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Your Details', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 8),
-                                Text('Issue', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 6),
-                                Text(issue, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                                const SizedBox(height: 12),
-                                Text('Attached Images', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
-                                _buildImages(images),
-                                const SizedBox(height: 14),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          if (req['id'] != null) {
-                                            RequestService.update(req['id'], {'status': 'cancelled'});
-                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled (simulated)')));
-                                          } else {
-                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled (simulated)')));
-                                          }
-                                          Navigator.pop(context);
-                                        },
-                                        icon: const Icon(Icons.cancel, color: Colors.black),
-                                        label: const Text('Cancel Request', style: TextStyle(color: Colors.black)),
-                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    OutlinedButton.icon(
-                                      onPressed: () {
-                                        Navigator.pushNamed(context, '/home', arguments: {'prefillIssue': issue});
-                                      },
-                                      icon: const Icon(Icons.repeat),
-                                      label: const Text('Request Another'),
-                                    )
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                }),
-                const SizedBox(height: 18),
+                _buildAttachments(context, requestId, attachments),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// =====================================================
+// SINGLE ATTACHMENT TILE
+// =====================================================
+class _AttachmentTile extends StatelessWidget {
+  final String requestId;
+  final Map<String, dynamic> attachment;
+
+  const _AttachmentTile({
+    required this.requestId,
+    required this.attachment,
+  });
+
+  bool get _isExpired {
+    final ts = attachment['expiresAt'];
+    if (ts == null) return false;
+    return (ts as Timestamp).toDate().isBefore(DateTime.now());
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  Future<void> _review(String status) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .doc(requestId)
+        .update({
+      'attachments': FieldValue.arrayRemove([attachment]),
+    });
+
+    final updated = Map<String, dynamic>.from(attachment)
+      ..['status'] = status
+      ..['reviewedAt'] = Timestamp.now()
+      ..['reviewedBy'] = uid;
+
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .doc(requestId)
+        .update({
+      'attachments': FieldValue.arrayUnion([updated]),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = attachment['type'];
+    final status = attachment['status'] ?? 'pending';
+    final url = attachment['url'];
+
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white10,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: type == 'image'
+                    ? CachedNetworkImage(imageUrl: url, fit: BoxFit.cover)
+                    : type == 'video'
+                        ? _InlineVideo(url)
+                        : Center(
+                            child: Icon(Icons.insert_drive_file,
+                                size: 40, color: Colors.white),
+                          ),
+              ),
+
+              // ACTIONS
+              if (!_isExpired)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: status == 'approved'
+                            ? null
+                            : () => _review('approved'),
+                        child: const Text('Approve',
+                            style: TextStyle(color: Colors.green)),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: status == 'rejected'
+                            ? null
+                            : () => _review('rejected'),
+                        child: const Text('Reject',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+
+        // STATUS BADGE
+        Positioned(
+          top: 6,
+          left: 6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _isExpired ? Colors.grey : _statusColor(status),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              _isExpired ? 'EXPIRED' : status.toUpperCase(),
+              style: const TextStyle(fontSize: 10),
+            ),
+          ),
+        ),
+
+        // DOWNLOAD
+        if (!_isExpired)
+          Positioned(
+            bottom: 6,
+            right: 6,
+            child: IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: () =>
+                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// =====================================================
+// INLINE VIDEO PLAYER
+// =====================================================
+class _InlineVideo extends StatefulWidget {
+  final String url;
+  const _InlineVideo(this.url);
+
+  @override
+  State<_InlineVideo> createState() => _InlineVideoState();
+}
+
+class _InlineVideoState extends State<_InlineVideo> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.value.isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _controller.value.isPlaying
+              ? _controller.pause()
+              : _controller.play();
+        });
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          ),
+          if (!_controller.value.isPlaying)
+            const Icon(Icons.play_circle_fill, size: 60),
+        ],
       ),
     );
   }

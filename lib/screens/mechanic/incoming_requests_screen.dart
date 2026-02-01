@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/request_firestore_service.dart';
+import '../../services/mechanic_firestore_service.dart';
+import 'request_route_preview_screen.dart';
 
 class IncomingRequestsScreen extends StatefulWidget {
-  const IncomingRequestsScreen({super.key});
+  const IncomingRequestsScreen({super.key, this.onSwitchToActiveTab});
+
+  /// Called when mechanic accepts a request from the route preview screen (switch to Active tab).
+  final VoidCallback? onSwitchToActiveTab;
 
   @override
   State<IncomingRequestsScreen> createState() =>
@@ -12,30 +17,66 @@ class IncomingRequestsScreen extends StatefulWidget {
 
 class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
   final RequestFirestoreService _requestService = RequestFirestoreService();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final MechanicFirestoreService _mechanicService = MechanicFirestoreService();
 
-  // ---------------- ACTION HANDLERS ----------------
-  Future<void> _acceptRequest(String requestId) async {
-    final mechanicId = _auth.currentUser?.uid;
-    if (mechanicId == null) {
+  final String mechanicId =
+      FirebaseAuth.instance.currentUser!.uid;
+
+  bool isOnline = true;
+
+  /// Opens the request route preview screen (map, distance, ETA, earning) then Accept/Reject.
+  Future<void> _openRequestPreview(Map<String, dynamic> r) async {
+    final requestId = r['requestId']?.toString();
+    final userLat = (r['userLat'] as num?)?.toDouble();
+    final userLng = (r['userLng'] as num?)?.toDouble();
+    final locationAddress = r['locationAddress']?.toString() ?? r['location']?.toString() ?? '';
+
+    if (requestId == null || requestId.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error: Mechanic not logged in")),
+        const SnackBar(content: Text('Invalid request data')),
+      );
+      return;
+    }
+    if (userLat == null || userLng == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request location not available')),
       );
       return;
     }
 
-    try {
-      await _requestService.acceptRequest(requestId, mechanicId);
+    final shop = await _mechanicService.getCurrentMechanicShopLocation();
+    if (shop == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Request accepted")),
+        const SnackBar(
+          content: Text('Set your workshop location in Profile first'),
+        ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error accepting request: $e")),
-      );
+      return;
+    }
+
+    final args = RequestRoutePreviewArgs(
+      requestId: requestId,
+      userLat: userLat,
+      userLng: userLng,
+      locationAddress: locationAddress,
+      shopLat: shop.lat,
+      shopLng: shop.lng,
+    );
+
+    if (!mounted) return;
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => RequestRoutePreviewScreen(
+          args: args,
+          onAccepted: widget.onSwitchToActiveTab,
+        ),
+      ),
+    );
+    if (result == 'accepted' && mounted) {
+      widget.onSwitchToActiveTab?.call();
     }
   }
 
@@ -111,7 +152,10 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
         centerTitle: true,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _requestService.getIncomingRequestsStream(),
+        stream: _requestService.getIncomingRequestsStream(
+  mechanicId: mechanicId,
+  isOnline: true,
+),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -297,8 +341,8 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () => _acceptRequest(r["requestId"]),
-                                    child: const Text("Accept"),
+                                    onPressed: () => _openRequestPreview(r),
+                                    child: const Text("Preview"),
                                   ),
                                 ),
                               ],

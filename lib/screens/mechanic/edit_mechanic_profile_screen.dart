@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../shop_location_picker_screen.dart';
 
 class EditMechanicProfileScreen extends StatefulWidget {
   const EditMechanicProfileScreen({super.key});
@@ -11,6 +15,10 @@ class EditMechanicProfileScreen extends StatefulWidget {
 class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  // ================= AUTH / FIRESTORE =================
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // ================= PRIMARY =================
   final _nameC = TextEditingController();
@@ -26,6 +34,12 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
   final _experienceC = TextEditingController();
   final _serviceRadiusC = TextEditingController();
   List<String> _vehicleTypes = ["Bike"];
+
+  // ================= SHOP LOCATION =================
+  double? _shopLat;
+  double? _shopLng;
+  String? _shopAddress;
+  bool _updatingShopLocation = false;
 
   // ================= OTHER =================
   final _pincodeC = TextEditingController();
@@ -83,6 +97,7 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadProfile();
   }
 
   @override
@@ -100,8 +115,75 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
     super.dispose();
   }
 
-  // ================= DATE PICKER =================
+  // ================= LOAD PROFILE =================
+  Future<void> _loadProfile() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
 
+    final doc = await _firestore.collection('mechanics').doc(uid).get();
+    if (!doc.exists) return;
+
+    final d = doc.data()!;
+    setState(() {
+      _nameC.text = d['name'] ?? '';
+      _emailC.text = d['email'] ?? '';
+      _phoneC.text = d['phone'] ?? '';
+      _garageNameC.text = d['garageName'] ?? '';
+      _experienceC.text = d['experienceYears']?.toString() ?? '';
+      _serviceRadiusC.text = d['serviceRadius']?.toString() ?? '';
+      _shopLat = d['shopLat'];
+      _shopLng = d['shopLng'];
+      _shopAddress = d['shopAddress'];
+    });
+  }
+
+  // ================= EDIT SHOP LOCATION =================
+  Future<void> _editShopLocation() async {
+    final mechanicId = _auth.currentUser?.uid;
+    if (mechanicId == null) return;
+
+   try {
+  final result = await Navigator.push<ShopLocationResult>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ShopLocationPickerScreen(),
+    ),
+  );
+
+
+      if (result == null) return;
+
+      setState(() => _updatingShopLocation = true);
+
+      await _firestore.collection('mechanics').doc(mechanicId).update({
+        'shopLat': result.latitude,
+        'shopLng': result.longitude,
+        'shopAddress': result.shopAddress,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _shopLat = result.latitude;
+        _shopLng = result.longitude;
+        _shopAddress = result.shopAddress;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Shop location updated")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to update location: $e")),
+      );
+    } finally {
+      if (mounted) setState(() => _updatingShopLocation = false);
+    }
+  }
+
+  // ================= DATE PICKER =================
   Future<void> _pickDOB() async {
     final picked = await showDatePicker(
       context: context,
@@ -120,8 +202,7 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
     }
   }
 
-  // ================= MULTI SELECT (SAFE) =================
-
+  // ================= MULTI SELECT =================
   Future<void> _multiSelectDialog({
     required String title,
     required List<String> options,
@@ -173,7 +254,6 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
   }
 
   // ================= UI =================
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,13 +299,11 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
   }
 
   // ================= PRIMARY TAB =================
-
   Widget _primaryTab() {
     return _section([
       _input("Full Name *", _nameC),
       _input("Email", _emailC),
       _input("Phone *", _phoneC, type: TextInputType.phone),
-
       DropdownButtonFormField<String>(
         initialValue: _gender,
         items: ["Male", "Female", "Others"]
@@ -234,7 +312,6 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
         onChanged: (v) => setState(() => _gender = v!),
         decoration: _decoration("Gender"),
       ),
-
       _chipSelector(
         label: "Languages",
         values: _languages,
@@ -246,7 +323,6 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
         ),
         onRemove: (v) => setState(() => _languages.remove(v)),
       ),
-
       TextField(
         controller: _dobC,
         readOnly: true,
@@ -255,15 +331,42 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
       ),
     ]);
   }
+  Widget _chipSelector({
+    required String label,
+    required List<String> values,
+    required VoidCallback onAdd,
+    required Function(String) onRemove,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            ...values.map(
+              (v) => Chip(
+                label: Text(v),
+                onDeleted: () => onRemove(v),
+              ),
+            ),
+            ActionChip(
+              label: const Text('+ Add'),
+              onPressed: onAdd,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   // ================= PROFESSIONAL TAB =================
-
   Widget _professionalTab() {
     return _section([
       _input("Garage Name *", _garageNameC),
       _input("Experience (Years)", _experienceC,
           type: TextInputType.number),
-
       _chipSelector(
         label: "Vehicle Types",
         values: _vehicleTypes,
@@ -275,19 +378,39 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
         ),
         onRemove: (v) => setState(() => _vehicleTypes.remove(v)),
       ),
-
       _input("Service Radius (KM)", _serviceRadiusC,
           type: TextInputType.number),
+      const Divider(height: 32),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.location_on),
+        title: const Text(
+          "Shop Location",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          _shopAddress ?? "Location not set",
+          style: const TextStyle(color: Colors.white70),
+        ),
+        trailing: _updatingShopLocation
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : TextButton(
+                onPressed: _editShopLocation,
+                child: const Text("Edit"),
+              ),
+      ),
     ]);
   }
 
   // ================= OTHER TAB =================
-
   Widget _otherTab() {
     return _section([
       _input("Pincode", _pincodeC, type: TextInputType.number),
       _input("City", _cityC),
-
       DropdownButtonFormField<String>(
         initialValue: _state,
         items: _states
@@ -299,42 +422,7 @@ class _EditMechanicProfileScreenState extends State<EditMechanicProfileScreen>
     ]);
   }
 
-  // ================= CHIP SELECTOR =================
-
-  Widget _chipSelector({
-    required String label,
-    required List<String> values,
-    required VoidCallback onAdd,
-    required Function(String) onRemove,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ...values.map(
-              (v) => Chip(
-                label: Text(v),
-                onDeleted: () => onRemove(v),
-              ),
-            ),
-            ActionChip(
-              label: const Text("+ Add"),
-              onPressed: onAdd,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   // ================= HELPERS =================
-
   Widget _section(List<Widget> children) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),

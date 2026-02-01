@@ -81,27 +81,58 @@ class _MechanicRootScreenState extends State<MechanicRootScreen> {
 
   // ================= REQUESTS TAB =================
   Widget _requestsTab() {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text("Requests"),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: "Incoming"),
-              Tab(text: "Active"),
-              Tab(text: "History"),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            IncomingRequestsScreen(),
-            ActiveServiceScreen(),
-            ServiceHistoryScreen(),
+    return _RequestsTabContent();
+  }
+}
+
+/// Holds TabController so we can switch to Active tab when mechanic accepts from preview.
+class _RequestsTabContent extends StatefulWidget {
+  @override
+  State<_RequestsTabContent> createState() => _RequestsTabContentState();
+}
+
+class _RequestsTabContentState extends State<_RequestsTabContent>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _switchToActiveTab() {
+    _tabController.animateTo(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text("Requests"),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: "Incoming"),
+            Tab(text: "Active"),
+            Tab(text: "History"),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          IncomingRequestsScreen(onSwitchToActiveTab: _switchToActiveTab),
+          ActiveServiceScreen(),
+          ServiceHistoryScreen(),
+        ],
       ),
     );
   }

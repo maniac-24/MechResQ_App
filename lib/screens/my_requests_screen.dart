@@ -168,7 +168,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await _requestService.updateRequestStatus(requestId, 'cancelled');
+                await _requestService.cancelRequest(requestId);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Request cancelled")),

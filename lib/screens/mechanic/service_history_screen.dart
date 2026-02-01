@@ -7,19 +7,9 @@ class ServiceHistoryScreen extends StatelessWidget {
 
   String _formatDate(DateTime? dateTime) {
     if (dateTime == null) return "Unknown";
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+    const months = [
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec'
     ];
     return "${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}";
   }
@@ -31,14 +21,10 @@ class ServiceHistoryScreen extends StatelessWidget {
     final requestService = RequestFirestoreService();
 
     if (mechanicId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text("Service History"),
-          centerTitle: true,
-        ),
-        body: const Center(
+      return const Scaffold(
+        body: Center(
           child: Text(
-            "Error: Mechanic not logged in",
+            "Mechanic not logged in",
             style: TextStyle(color: Colors.white70),
           ),
         ),
@@ -61,25 +47,7 @@ class ServiceHistoryScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Error loading service history",
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    snapshot.error.toString(),
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
+            return _errorState(snapshot.error.toString());
           }
 
           final requests = snapshot.data ?? [];
@@ -96,33 +64,34 @@ class ServiceHistoryScreen extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(14),
             itemCount: requests.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, i) {
-              final r = requests[i];
-              final vehicleType = r["vehicleType"] ?? r["vehicle"] ?? "N/A";
-              final issue = r["issue"] ?? "";
-              final createdAt = r["createdAt"] as DateTime?;
-              final userId = r["userId"] ?? "";
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, index) {
+              final r = requests[index];
+              final vehicleType = r['vehicleType'] ?? r['vehicle'] ?? "N/A";
+              final issue = r['issue'] ?? "Issue not specified";
+              final createdAt = r['createdAt'] as DateTime?;
+              final userId = r['userId'] ?? "";
 
               return FutureBuilder<Map<String, dynamic>?>(
                 future: requestService.getUserProfile(userId),
                 builder: (context, userSnapshot) {
                   final userName =
-                      userSnapshot.data?["name"]?.toString() ?? "User";
+                      userSnapshot.data?['name']?.toString() ?? "User";
                   final userInitial =
                       userName.isNotEmpty ? userName[0].toUpperCase() : "U";
 
                   return Card(
                     color: const Color(0xFF1C1C1C),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     elevation: 3,
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ---------------- TOP ROW ----------------
+                          // ---------------- HEADER ----------------
                           Row(
                             children: [
                               CircleAvatar(
@@ -140,49 +109,27 @@ class ServiceHistoryScreen extends StatelessWidget {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       userName,
                                       style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight:
-                                              FontWeight.bold),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       vehicleType,
                                       style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 13),
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4),
-                                decoration: BoxDecoration(
-                                  color:
-                                      // ignore: deprecated_member_use
-                                      Colors.green.withOpacity(0.15),
-                                  borderRadius:
-                                      BorderRadius.circular(8),
-                                  border: Border.all(
-                                      color: Colors.green),
-                                ),
-                                child: const Text(
-                                  "COMPLETED",
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
+                              _statusChip(),
                             ],
                           ),
 
@@ -192,7 +139,9 @@ class ServiceHistoryScreen extends StatelessWidget {
                           _infoRow(Icons.build, issue),
                           if (createdAt != null)
                             _infoRow(
-                                Icons.calendar_today, _formatDate(createdAt)),
+                              Icons.calendar_today,
+                              _formatDate(createdAt),
+                            ),
 
                           const SizedBox(height: 12),
 
@@ -200,15 +149,15 @@ class ServiceHistoryScreen extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerRight,
                             child: OutlinedButton.icon(
-                              icon: const Icon(Icons.replay),
-                              label: const Text("Request Again"),
+                              icon: const Icon(Icons.info_outline),
+                              label: const Text("View Details"),
                               onPressed: () {
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        "Request again feature coming soon"),
-                                  ),
+                                _showDetailsBottomSheet(
+                                  context,
+                                  userName,
+                                  vehicleType,
+                                  issue,
+                                  createdAt,
                                 );
                               },
                             ),
@@ -226,7 +175,27 @@ class ServiceHistoryScreen extends StatelessWidget {
     );
   }
 
-  // ---------------- INFO ROW ----------------
+  // ================= UI HELPERS =================
+
+  Widget _statusChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green),
+      ),
+      child: const Text(
+        "COMPLETED",
+        style: TextStyle(
+          color: Colors.green,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   Widget _infoRow(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -242,6 +211,74 @@ class ServiceHistoryScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _errorState(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          const Text(
+            "Error loading service history",
+            style: TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            error,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= BOTTOM SHEET =================
+
+  void _showDetailsBottomSheet(
+    BuildContext context,
+    String userName,
+    String vehicleType,
+    String issue,
+    DateTime? createdAt,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Service Details",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _infoRow(Icons.person, userName),
+              _infoRow(Icons.directions_car, vehicleType),
+              _infoRow(Icons.build, issue),
+              if (createdAt != null)
+                _infoRow(
+                  Icons.calendar_today,
+                  _formatDate(createdAt),
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
     );
   }
 }

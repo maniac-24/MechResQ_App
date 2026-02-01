@@ -10,6 +10,7 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_user_screen.dart';
 import 'screens/register_mechanic_screen.dart';
+import 'screens/shop_location_picker_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
@@ -56,6 +57,7 @@ class MechResQApp extends StatelessWidget {
         // REGISTER
         '/register_user': (_) => const UserRegisterScreen(),
         '/register_mechanic': (_) => const MechanicRegisterScreen(),
+        '/shop_location_picker': (_) => ShopLocationPickerScreen(),
 
         // USER
         '/home': (_) => const MechanicListScreen(),
