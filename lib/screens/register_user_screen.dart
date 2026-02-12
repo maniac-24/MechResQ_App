@@ -5,7 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+
 import '../services/auth_service.dart';
+import '../utils/snackbar_helper.dart';
 
 class UserRegisterScreen extends StatefulWidget {
   const UserRegisterScreen({Key? key}) : super(key: key);
@@ -82,15 +84,17 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
   String? _validateEmail(String? v) {
     final value = (v ?? '').trim();
     if (value.isEmpty) return 'Enter email';
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value))
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
       return 'Enter valid email';
+    }
     return null;
   }
 
   String? _validatePhone(String? v) {
     final value = (v ?? '').trim();
-    if (!RegExp(r'^\d{10}$').hasMatch(value))
+    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
       return 'Enter 10-digit phone number';
+    }
     return null;
   }
 
@@ -101,85 +105,61 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
     return null;
   }
 
-  // ---------------- ANDROID-STYLE PERMISSION BOTTOM SHEET ----------------
-  Future<String?> _showPermissionBottomSheet() async {
-    return await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E2E),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text(
-                      'MechResQ wants to access your storage',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text(
-                      'This is needed to upload your ID documents',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(color: Colors.white12, height: 1),
-                  _permissionOption(context,
-                      title: 'While using the app', value: 'while_using'),
-                  const Divider(color: Colors.white12, height: 1),
-                  _permissionOption(context,
-                      title: 'Only this time', value: 'only_this_time'),
-                  const Divider(color: Colors.white12, height: 1),
-                  _permissionOption(
-                      context, title: "Don't allow", value: null),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // ---------------- PERMISSION EXPLANATION ----------------
+  Future<bool?> _showPermissionExplanation() async {
+    final scheme = Theme.of(context).colorScheme;
 
-  Widget _permissionOption(BuildContext context,
-      {required String title, required String? value}) {
-    return InkWell(
-      onTap: () => Navigator.pop(context, value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF6C9FFF),
-            fontSize: 17,
-            fontWeight: FontWeight.w400,
+    return await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Storage Access Needed',
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'We need access to upload your ID documents.',
+                style: TextStyle(
+                  color: scheme.onSurface.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Continue',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+            ],
           ),
-          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -187,80 +167,89 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
 
   // ---------------- FILE PICKER BOTTOM SHEET ----------------
   Future<String?> _showFilePickerBottomSheet() async {
+    final scheme = Theme.of(context).colorScheme;
+
     return await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E2E),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: const Text(
-                      'Upload ID Document',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Upload ID Document',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 20),
-                  const Divider(color: Colors.white12, height: 1),
-                  _fileOption(context,
-                      icon: Icons.camera_alt,
-                      title: 'Take Photo',
-                      value: 'camera'),
-                  const Divider(color: Colors.white12, height: 1),
-                  _fileOption(context,
-                      icon: Icons.photo_library,
-                      title: 'Choose from Gallery',
-                      value: 'gallery'),
-                  const Divider(color: Colors.white12, height: 1),
-                  _fileOption(context,
-                      icon: Icons.insert_drive_file,
-                      title: 'Choose PDF / File',
-                      value: 'file'),
-                  const Divider(color: Colors.white12, height: 1),
-                  _fileOption(
-                      context, icon: Icons.close, title: 'Cancel', value: null),
-                ],
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
+              const SizedBox(height: 20),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(
+                context,
+                icon: Icons.camera_alt,
+                title: 'Take Photo',
+                value: 'camera',
+              ),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(
+                context,
+                icon: Icons.photo_library,
+                title: 'Choose from Gallery',
+                value: 'gallery',
+              ),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(
+                context,
+                icon: Icons.insert_drive_file,
+                title: 'Choose PDF / File',
+                value: 'file',
+              ),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(
+                context,
+                icon: Icons.close,
+                title: 'Cancel',
+                value: null,
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _fileOption(BuildContext context,
-      {required IconData icon, required String title, required String? value}) {
+  Widget _fileOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String? value,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: () => Navigator.pop(context, value),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF6C9FFF), size: 22),
+            Icon(icon, color: scheme.primary, size: 22),
             const SizedBox(width: 16),
             Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF6C9FFF),
+              style: TextStyle(
+                color: scheme.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
               ),
@@ -271,75 +260,61 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
     );
   }
 
-  // ---------------- MAIN FILE PICKER LOGIC (REORDERED) ----------------
+  // ---------------- PERMISSION FLOW ----------------
   Future<void> _pickIdFile() async {
     try {
-      // Step 1: ALWAYS show permission bottom sheet first (even if already granted)
-      final permissionChoice = await _showPermissionBottomSheet();
-
-      // User tapped "Don't allow" or dismissed
-      if (permissionChoice == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Permission denied. Cannot upload files.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-
-      // Step 2: Check and request actual system permission based on Android version
-      PermissionStatus permissionStatus;
+      // Check permission status FIRST
+      PermissionStatus storageStatus;
       if (Platform.isAndroid) {
-        final androidInfo = await DeviceInfoPlugin().androidInfo;
-        if (androidInfo.version.sdkInt >= 33) {
-          permissionStatus = await Permission.photos.status;
-        } else {
-          permissionStatus = await Permission.storage.status;
-        }
+        final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+        storageStatus = sdk >= 33
+            ? await Permission.photos.status
+            : await Permission.storage.status;
       } else {
-        permissionStatus = await Permission.storage.status;
+        storageStatus = await Permission.storage.status;
       }
 
-      // Request permission if not granted
-      if (!permissionStatus.isGranted) {
-        PermissionStatus newPermission;
-        if (Platform.isAndroid) {
-          final androidInfo = await DeviceInfoPlugin().androidInfo;
-          if (androidInfo.version.sdkInt >= 33) {
-            newPermission = await Permission.photos.request();
-          } else {
-            newPermission = await Permission.storage.request();
-          }
-        } else {
-          newPermission = await Permission.storage.request();
-        }
+      // ONLY show explanation if permission is NOT granted
+      if (!storageStatus.isGranted) {
+        if (!mounted) return;
+        final userWantsToContinue = await _showPermissionExplanation();
 
-        // Handle system permission denial
-        if (newPermission.isDenied) {
+        if (userWantsToContinue != true) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Permission denied. Cannot upload files.'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
-            ),
+          SnackBarHelper.showWarning(
+            context,
+            'Permission needed to upload files.',
           );
           return;
         }
 
-        // Handle permanently denied → redirect to settings
+        // Now request actual system permission
+        PermissionStatus newPermission;
+        if (Platform.isAndroid) {
+          final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+          newPermission = sdk >= 33
+              ? await Permission.photos.request()
+              : await Permission.storage.request();
+        } else {
+          newPermission = await Permission.storage.request();
+        }
+
+        // Handle denial
+        if (newPermission.isDenied) {
+          if (!mounted) return;
+          SnackBarHelper.showError(
+            context,
+            'Permission denied. Cannot upload files.',
+          );
+          return;
+        }
+
+        // Handle permanently denied
         if (newPermission.isPermanentlyDenied) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Permission permanently denied. Opening settings...'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
+          SnackBarHelper.showWarning(
+            context,
+            'Permission permanently denied. Opening settings...',
           );
           await Future.delayed(const Duration(seconds: 2));
           await openAppSettings();
@@ -347,7 +322,7 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
         }
       }
 
-      // Step 3: Permission granted → show file picker options
+      // Permission is now granted → show file picker
       if (!mounted) return;
       final fileChoice = await _showFilePickerBottomSheet();
       if (fileChoice == null) return;
@@ -355,18 +330,21 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
       XFile? result;
 
       if (fileChoice == 'camera') {
-        // Request camera permission separately
-        final cameraPermission = await Permission.camera.request();
-        if (!cameraPermission.isGranted) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Camera permission required'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
+        // Check camera status FIRST
+        final cameraStatus = await Permission.camera.status;
+
+        if (!cameraStatus.isGranted) {
+          final cameraPermission = await Permission.camera.request();
+          if (!cameraPermission.isGranted) {
+            if (!mounted) return;
+            SnackBarHelper.showError(
+              context,
+              'Camera permission required',
+            );
+            return;
+          }
         }
+
         result = await _picker.pickImage(
           source: ImageSource.camera,
           imageQuality: 85,
@@ -387,7 +365,7 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
         );
       }
 
-      // Step 4: File selected successfully
+      // File selected successfully
       if (result != null && result.path.isNotEmpty) {
         setState(() {
           _pickedIdFile = File(result!.path);
@@ -395,28 +373,16 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
         });
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(child: Text('${result.name} uploaded')),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        SnackBarHelper.showSuccess(
+          context,
+          '${result.name} uploaded',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
+      SnackBarHelper.showError(
+        context,
+        'Error: ${e.toString()}',
       );
     }
   }
@@ -437,17 +403,17 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Registration successful ✅ Please login.')),
+      SnackBarHelper.showSuccess(
+        context,
+        'Registration successful ✅ Please login.',
       );
 
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      SnackBarHelper.showError(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -457,6 +423,8 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Register - User'), centerTitle: true),
       body: Center(
@@ -468,10 +436,13 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  const Text(
+                  Text(
                     'Create User Account',
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 18),
 
@@ -556,14 +527,21 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                           value: _selectedIdType,
                           items: const [
                             DropdownMenuItem(
-                                value: 'Aadhaar', child: Text('Aadhaar')),
+                              value: 'Aadhaar',
+                              child: Text('Aadhaar'),
+                            ),
                             DropdownMenuItem(
-                                value: 'Driving License',
-                                child: Text('Driving License')),
+                              value: 'Driving License',
+                              child: Text('Driving License'),
+                            ),
                             DropdownMenuItem(
-                                value: 'Passport', child: Text('Passport')),
+                              value: 'Passport',
+                              child: Text('Passport'),
+                            ),
                             DropdownMenuItem(
-                                value: 'Other', child: Text('Other')),
+                              value: 'Other',
+                              child: Text('Other'),
+                            ),
                           ],
                           onChanged: (v) =>
                               setState(() => _selectedIdType = v ?? 'Aadhaar'),
@@ -610,8 +588,8 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: _pickedIdFileName != null
-                                ? Colors.green
-                                : Colors.grey,
+                                ? scheme.secondary
+                                : scheme.onSurface.withOpacity(0.5),
                             fontWeight: _pickedIdFileName != null
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -627,20 +605,23 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: scheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green),
+                        border: Border.all(color: scheme.secondary),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.green),
+                          Icon(
+                            Icons.check_circle,
+                            color: scheme.onSecondaryContainer,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'File uploaded: $_pickedIdFileName',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.green,
+                                color: scheme.onSecondaryContainer,
                               ),
                             ),
                           ),
@@ -657,19 +638,17 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                     child: ElevatedButton(
                       onPressed:
                           (_loading || !_isFormValid) ? null : _register,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFormValid ? null : Colors.grey,
-                      ),
                       child: _loading
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 18,
                               width: 18,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: scheme.onPrimary,
+                              ),
                             )
                           : Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               child: Text(
                                 _isFormValid
                                     ? 'Register'

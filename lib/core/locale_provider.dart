@@ -7,8 +7,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'theme.dart';
 import 'theme_controller.dart';
 import 'core/locale_provider.dart';
-import 'l10n/app_localizations.dart';
 import 'services/auth_service.dart';
+import 'l10n/app_localizations.dart';
 
 // SCREENS
 import 'screens/welcome_screen.dart';
@@ -28,22 +28,14 @@ import 'screens/mechanic/mechanic_root_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 REQUIRED FOR FIREBASE
   await Firebase.initializeApp();
-
-  // 🔥 INITIALIZE LOCALE PROVIDER (loads saved locale or detects device)
-  final localeProvider = LocaleProvider();
-  await localeProvider.init();
 
   runZonedGuarded(
     () => runApp(
-      // ═══════════════════════════════════════════════════════════════════════
-      // MULTI-PROVIDER SETUP - Theme + Locale
-      // ═══════════════════════════════════════════════════════════════════════
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => ThemeController()),
-          ChangeNotifierProvider.value(value: localeProvider),
+          ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ],
         child: const MechResQApp(),
       ),
@@ -64,43 +56,33 @@ class MechResQApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ═══════════════════════════════════════════════════════════════════════
-    // WATCH PROVIDERS - App rebuilds when theme or locale changes
-    // ═══════════════════════════════════════════════════════════════════════
     final themeController = context.watch<ThemeController>();
     final localeProvider = context.watch<LocaleProvider>();
 
     return MaterialApp(
       title: 'MechResQ',
       debugShowCheckedModeBanner: false,
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // LOCALIZATION CONFIGURATION
-      // ═══════════════════════════════════════════════════════════════════════
-      locale: localeProvider.locale, // 🔥 CRITICAL: Reactive locale switching
-      
+
+      // 🔥 LOCALIZATION CONFIGURATION
+      locale: localeProvider.locale,
       supportedLocales: AppLocalizations.supportedLocales,
-      
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // THEME CONFIGURATION
-      // ═══════════════════════════════════════════════════════════════════════
+
+      // 🔥 THEME CONFIGURATION
       theme: ThemeData.light().copyWith(
-        colorScheme: ColorScheme.light(
-          primary: const Color(0xFFFFD700), // Yellow
-          secondary: const Color(0xFF263238),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFFFFD700), // Yellow
+          secondary: Color(0xFF263238),
         ),
       ),
-      darkTheme: AppTheme.hazardTheme(), // Your brand dark theme
-      themeMode: themeController.themeMode, // 🔥 CRITICAL: Reactive theme switching
+      darkTheme: AppTheme.hazardTheme(),
+      themeMode: themeController.themeMode,
 
-      // Always start with Splash
       home: const SplashScreen(),
 
       routes: {
@@ -118,31 +100,20 @@ class MechResQApp extends StatelessWidget {
         '/profile': (_) => ProfileScreen(),
         '/my_requests': (_) => MyRequestsScreen(),
         '/create_request': (_) => const CreateRequestScreen(),
-        '/request_success': (context) {
-          // RequestSuccessScreen reads arguments from ModalRoute.of(context) in its build method
-          return const RequestSuccessScreen();
-        },
+        '/request_success': (_) => const RequestSuccessScreen(),
         '/settings': (_) => const SettingsScreen(),
 
         // MECHANIC
         '/mechanic_root': (_) => const MechanicRootScreen(),
       },
+
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
-          builder: (context) {
-            // Use localized error message if l10n available
-            final l10n = AppLocalizations.of(context);
-            
-            return Scaffold(
-              body: Center(
-                child: Text(
-                  l10n != null
-                      ? '${l10n.error}: ${settings.name ?? "unknown"}'
-                      : 'Route not found: ${settings.name}',
-                ),
-              ),
-            );
-          },
+          builder: (_) => Scaffold(
+            body: Center(
+              child: Text('Route not found: ${settings.name}'),
+            ),
+          ),
         );
       },
     );
@@ -187,7 +158,6 @@ class _SplashScreenState extends State<SplashScreen> {
     } else if (role == 'user') {
       _go('/home');
     } else {
-      // Safety fallback
       await _auth.logout();
       _go('/welcome');
     }

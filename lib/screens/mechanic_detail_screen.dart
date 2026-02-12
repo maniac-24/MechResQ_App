@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/snackbar_helper.dart';
+
 class MechanicDetailScreen extends StatelessWidget {
   final Map<String, String> mechanic;
 
@@ -7,6 +9,8 @@ class MechanicDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    
     final name = (mechanic['name'] ?? 'Mechanic').trim();
     final shop = (mechanic['shopName'] ?? 'Garage / Workshop').trim();
 
@@ -40,7 +44,7 @@ class MechanicDetailScreen extends StatelessWidget {
           children: [
             // ✅ HEADER CARD
             Card(
-              color: const Color(0xFF1B1B1B),
+              color: scheme.surfaceContainerHighest,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -50,11 +54,13 @@ class MechanicDetailScreen extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 36,
+                      backgroundColor: scheme.primary,
                       child: Text(
                         initial,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
+                          color: scheme.onPrimary,
                         ),
                       ),
                     ),
@@ -65,29 +71,34 @@ class MechanicDetailScreen extends StatelessWidget {
                         children: [
                           Text(
                             shop,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: scheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
-                              color: Colors.white70,
+                              color: scheme.onSurface.withOpacity(0.7),
                             ),
                           ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.star,
-                                  size: 16, color: Colors.amber),
+                              Icon(
+                                Icons.star,
+                                size: 16,
+                                color: scheme.tertiary,
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 "$rating • $distance km",
-                                style: const TextStyle(color: Colors.white70),
+                                style: TextStyle(
+                                  color: scheme.onSurface.withOpacity(0.7),
+                                ),
                               ),
                             ],
                           ),
@@ -102,39 +113,54 @@ class MechanicDetailScreen extends StatelessWidget {
             const SizedBox(height: 22),
 
             // ✅ SERVICES
-            const Text(
+            Text(
               'Services',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              services.isNotEmpty ? services : "General vehicle repair services.",
-              style: const TextStyle(color: Colors.white70),
+              services.isNotEmpty
+                  ? services
+                  : "General vehicle repair services.",
+              style: TextStyle(
+                color: scheme.onSurface.withOpacity(0.7),
+              ),
             ),
 
             const SizedBox(height: 18),
 
             // ✅ CONTACT
-            const Text(
+            Text(
               'Contact',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
             ),
             const SizedBox(height: 10),
 
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1C),
+                color: scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.phone_android, color: Colors.white70),
+                  Icon(
+                    Icons.phone_android,
+                    color: scheme.onSurface.withOpacity(0.7),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       phone,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: scheme.onSurface),
                     ),
                   ),
                   TextButton.icon(
@@ -155,15 +181,17 @@ class MechanicDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                    ),
                     icon: const Icon(Icons.add_circle_outline),
                     label: const Text('Create Request'),
-
-                    // ✅ FIXED: Navigate to CreateRequestScreen
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
                         '/create_request',
-                        arguments: mechanic, // passing mechanic details ✅
+                        arguments: mechanic,
                       );
                     },
                   ),
@@ -173,8 +201,9 @@ class MechanicDetailScreen extends StatelessWidget {
                   icon: const Icon(Icons.share),
                   label: const Text('Share'),
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Share feature coming soon ✅')),
+                    SnackBarHelper.showInfo(
+                      context,
+                      'Share feature coming soon ✅',
                     );
                   },
                 ),
@@ -184,16 +213,23 @@ class MechanicDetailScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ✅ NOTES
-            const Text(
+            Text(
               'Notes',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               "• Please confirm service charges before repair.\n"
               "• Payment options may include Cash / UPI.\n"
               "• Always verify mechanic identity before proceeding.",
-              style: TextStyle(color: Colors.white70, height: 1.4),
+              style: TextStyle(
+                color: scheme.onSurface.withOpacity(0.7),
+                height: 1.4,
+              ),
             ),
           ],
         ),
@@ -202,21 +238,35 @@ class MechanicDetailScreen extends StatelessWidget {
   }
 
   void _showCallConfirmation(BuildContext context, String phone) {
+    final scheme = Theme.of(context).colorScheme;
+    
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Call Mechanic'),
-        content: Text('Do you want to call $phone ?'),
+        backgroundColor: scheme.surface,
+        title: Text(
+          'Call Mechanic',
+          style: TextStyle(color: scheme.onSurface),
+        ),
+        content: Text(
+          'Do you want to call $phone ?',
+          style: TextStyle(color: scheme.onSurface.withOpacity(0.8)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+            ),
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Calling $phone...')),
+              SnackBarHelper.showInfo(
+                context,
+                'Calling $phone...',
               );
             },
             child: const Text('Call'),

@@ -1,4 +1,5 @@
 // lib/services/mechanic_firestore_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -11,14 +12,23 @@ class MechanicFirestoreService {
   Future<({double lat, double lng})?> getCurrentMechanicShopLocation() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
+
     final doc = await _db.collection('mechanics').doc(uid).get();
     if (!doc.exists) return null;
-    final d = doc.data();
-    final lat = d?['shopLat'];
-    final lng = d?['shopLng'];
+
+    final data = doc.data();
+    if (data == null) return null;
+
+    // Role safety check
+    if (data['role'] != 'mechanic') return null;
+
+    final lat = data['shopLat'];
+    final lng = data['shopLng'];
+
     if (lat is num && lng is num) {
       return (lat: lat.toDouble(), lng: lng.toDouble());
     }
+
     return null;
   }
 
@@ -31,11 +41,13 @@ class MechanicFirestoreService {
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw Exception('User not logged in');
+
     await _db.collection('mechanics').doc(uid).set(
       {
         'shopLat': shopLat,
         'shopLng': shopLng,
-        if (shopAddress != null && shopAddress.isNotEmpty) 'shopAddress': shopAddress,
+        if (shopAddress != null && shopAddress.isNotEmpty)
+          'shopAddress': shopAddress,
         'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
@@ -44,47 +56,61 @@ class MechanicFirestoreService {
 
   /// Returns a stream of verified mechanics as List<Map<String, dynamic>>
   /// Only mechanics where isVerified == true are included
+  /// Ordered by creation date (newest first) for consistent UI presentation
   Stream<List<Map<String, dynamic>>> getVerifiedMechanicsStream() {
     return _db
         .collection('mechanics')
         .where('isVerified', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         final uid = doc.id;
 
+        // Role safety: only include documents with mechanic role
+        if (data['role'] != 'mechanic') {
+          return null;
+        }
+
         return {
           'uid': uid,
           'id': uid,
 
+          // Core mechanic info
           'name': (data['name'] ?? '').toString(),
           'shopName': (data['shopName'] ?? '').toString(),
           'email': (data['email'] ?? '').toString(),
           'phone': (data['phone'] ?? '').toString(),
           'address': (data['address'] ?? '').toString(),
 
-          // ✅ VehicleTypes as List<String>
+          // Vehicle types as List<String>
           'vehicleTypes': (data['vehicleTypes'] is List)
               ? List<String>.from(data['vehicleTypes'])
               : <String>[],
 
+          // Services offered as List<String>
+          'services': (data['services'] is List)
+              ? List<String>.from(data['services'])
+              : <String>[],
+
+          // Verification status
           'isVerified': data['isVerified'] ?? false,
 
-          // Optional fields with safe defaults
+          // Real metrics (not dummy data)
           'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
           'totalReviews': (data['totalReviews'] as num?)?.toInt() ?? 0,
-
-          // Dummy compatibility fields (can remove later)
           'experienceYears': (data['experienceYears'] as num?)?.toInt() ?? 0,
-          'serviceTypes': data['serviceTypes'] ?? [],
-          'priceRange': data['priceRange']?.toString() ?? '',
-          'distanceKm': (data['distanceKm'] as num?)?.toDouble() ?? 0.0,
 
+          // Timestamps
           'createdAt': data['createdAt'],
           'updatedAt': data['updatedAt'],
+
+          // NOTE: distanceKm is NOT stored in Firestore
+          // It must be computed client-side based on user location:
+          // double distanceKm = calculateDistance(userLat, userLng, mechLat, mechLng);
         };
-      }).toList(); // ✅ IMPORTANT: convert Iterable -> List
+      }).whereType<Map<String, dynamic>>().toList(); // Filter out nulls from role check
     });
   }
 }

@@ -10,6 +10,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../services/request_firestore_service.dart';
 import '../../utils/directions_service.dart';
+import '../../utils/snackbar_helper.dart';
+
 // ============================================================
 // ARGUMENTS
 // ============================================================
@@ -56,11 +58,17 @@ class RequestRoutePreviewArgs {
 }
 
 // ============================================================
-// EARNING CONSTANTS (MVP)
+// EARNING CONSTANTS (MVP with surge pricing)
 // ============================================================
 
 const double _baseFare = 150;
 const double _perKmRate = 20;
+
+// Distance-based surge pricing
+const double _surgeThreshold1 = 15.0; // km
+const double _surgeThreshold2 = 30.0; // km
+const double _surgeMultiplier1 = 1.2; // 20% surge
+const double _surgeMultiplier2 = 1.5; // 50% surge
 
 // ============================================================
 // SCREEN
@@ -92,6 +100,9 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
   String? _directionsError;
   DirectionsResult? _directions;
   bool _actionLoading = false;
+  
+  // Route caching to avoid API re-hits
+  static final Map<String, DirectionsResult> _routeCache = {};
 
   @override
   void initState() {
@@ -105,28 +116,71 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
     super.dispose();
   }
 
-  Future<void> _loadDirections() async {
+  String _getCacheKey() {
+    return '${widget.args.shopLat},${widget.args.shopLng}->'
+           '${widget.args.userLat},${widget.args.userLng}';
+  }
+
+  Future<void> _loadDirections({int retryCount = 0}) async {
     setState(() {
       _directionsLoading = true;
       _directionsError = null;
       _directions = null;
     });
 
+    // Check cache first
+    final cacheKey = _getCacheKey();
+    if (_routeCache.containsKey(cacheKey)) {
+      final cached = _routeCache[cacheKey]!;
+      if (mounted) {
+        setState(() {
+          _directionsLoading = false;
+          _directions = cached;
+        });
+        _fitBoundsAfterDelay();
+      }
+      return;
+    }
+
     DirectionsResult? result;
     try {
+      // Retry logic with timeout
       result = await fetchDirections(
         originLat: widget.args.shopLat,
         originLng: widget.args.shopLng,
         destLat: widget.args.userLat,
         destLng: widget.args.userLng,
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException('Request timed out'),
       );
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _directionsLoading = false;
-          _directionsError = 'Failed to load route. Please try again.';
-        });
+    } on TimeoutException {
+      if (!mounted) return;
+      
+      // Retry logic (max 2 retries)
+      if (retryCount < 2) {
+        await Future.delayed(Duration(seconds: retryCount + 1));
+        return _loadDirections(retryCount: retryCount + 1);
       }
+      
+      setState(() {
+        _directionsLoading = false;
+        _directionsError = 'Request timed out. Please check your connection.';
+      });
+      return;
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Retry logic (max 2 retries)
+      if (retryCount < 2) {
+        await Future.delayed(Duration(seconds: retryCount + 1));
+        return _loadDirections(retryCount: retryCount + 1);
+      }
+      
+      setState(() {
+        _directionsLoading = false;
+        _directionsError = 'Failed to load route. Please try again.';
+      });
       return;
     }
 
@@ -138,6 +192,9 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
       });
       return;
     }
+
+    // Cache successful result
+    _routeCache[cacheKey] = result;
 
     setState(() {
       _directionsLoading = false;
@@ -195,36 +252,51 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
 
   double get _distanceKm => _directions?.distanceKm ?? 0;
   int get _etaMinutes => _directions?.durationMinutes ?? 0;
-  int get _estimatedEarning =>
-      (_baseFare + (_distanceKm * _perKmRate)).round();
+  
+  // Surge pricing calculation
+  double get _surgeMultiplier {
+    if (_distanceKm >= _surgeThreshold2) return _surgeMultiplier2;
+    if (_distanceKm >= _surgeThreshold1) return _surgeMultiplier1;
+    return 1.0;
+  }
+  
+  bool get _hasSurge => _surgeMultiplier > 1.0;
+  
+  int get _estimatedEarning {
+    final baseAmount = _baseFare + (_distanceKm * _perKmRate);
+    return (baseAmount * _surgeMultiplier).round();
+  }
 
   Future<void> _acceptRequest() async {
     final mechanicId = _auth.currentUser?.uid;
     if (mechanicId == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to accept.')),
+      SnackBarHelper.showError(
+        context,
+        'You must be logged in to accept.',
       );
       return;
     }
 
     setState(() => _actionLoading = true);
     try {
-     await _requestService.acceptRequest(
-  requestId: widget.args.requestId,
-  mechanicId: mechanicId,
-);
+      await _requestService.acceptRequest(
+        requestId: widget.args.requestId,
+        mechanicId: mechanicId,
+      );
 
       if (!mounted) return;
       widget.onAccepted?.call();
       Navigator.of(context).pop('accepted');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request accepted')),
+      SnackBarHelper.showSuccess(
+        context,
+        'Request accepted',
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error accepting request: $e')),
+      SnackBarHelper.showError(
+        context,
+        'Error accepting request: $e',
       );
     } finally {
       if (mounted) setState(() => _actionLoading = false);
@@ -232,6 +304,8 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
   }
 
   Future<void> _rejectRequest() async {
+    final scheme = Theme.of(context).colorScheme;
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -245,7 +319,10 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Reject'),
           ),
@@ -260,13 +337,15 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
       await _requestService.rejectRequest(widget.args.requestId);
       if (!mounted) return;
       Navigator.of(context).pop('rejected');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request rejected')),
+      SnackBarHelper.showSuccess(
+        context,
+        'Request rejected',
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error rejecting request: $e')),
+      SnackBarHelper.showError(
+        context,
+        'Error rejecting request: $e',
       );
     } finally {
       if (mounted) setState(() => _actionLoading = false);
@@ -275,6 +354,7 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final args = widget.args;
     final shop = LatLng(args.shopLat, args.shopLng);
     final user = LatLng(args.userLat, args.userLng);
@@ -300,7 +380,7 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
         Polyline(
           polylineId: const PolylineId('route'),
           points: _directions!.polylinePoints,
-          color: Theme.of(context).colorScheme.primary,
+          color: scheme.primary,
           width: 4,
         ),
       };
@@ -333,10 +413,10 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
                   zoomControlsEnabled: false,
                 ),
                 if (_directionsLoading)
-                  const Positioned.fill(
+                  Positioned.fill(
                     child: ColoredBox(
-                      color: Color(0x44000000),
-                      child: Center(
+                      color: scheme.surface.withOpacity(0.85),
+                      child: const Center(
                         child: CircularProgressIndicator(),
                       ),
                     ),
@@ -348,22 +428,28 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
                     bottom: 16,
                     child: Material(
                       elevation: 2,
+                      color: scheme.errorContainer,
                       borderRadius: BorderRadius.circular(8),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                color: Colors.orange),
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: scheme.error,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _directionsError!,
-                                style: const TextStyle(fontSize: 13),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onErrorContainer,
+                                ),
                               ),
                             ),
                             TextButton(
-                              onPressed: _loadDirections,
+                              onPressed: () => _loadDirections(),
                               child: const Text('Retry'),
                             ),
                           ],
@@ -383,11 +469,11 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Address
-                  const Text(
+                  Text(
                     'Address',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white54,
+                      color: scheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -396,9 +482,9 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
                     args.locationAddress.isEmpty
                         ? 'Location (${args.userLat.toStringAsFixed(4)}, ${args.userLng.toStringAsFixed(4)})'
                         : args.locationAddress,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white,
+                      color: scheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -429,44 +515,77 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Estimated earning
+                  // Estimated earning with surge indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.15),
+                      color: scheme.primaryContainer,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: scheme.primary,
                         width: 1,
                       ),
                     ),
-                    child: Row(
+                    child: Column(
                       children: [
-                        Icon(
-                          Icons.account_balance_wallet,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 24,
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet,
+                              color: scheme.primary,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Estimated earning: ',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: scheme.onPrimaryContainer.withOpacity(0.8),
+                              ),
+                            ),
+                            Text(
+                              '₹$_estimatedEarning',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Estimated earning: ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
+                        if (_hasSurge) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: scheme.tertiaryContainer,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.trending_up,
+                                  size: 14,
+                                  color: scheme.tertiary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${((_surgeMultiplier - 1) * 100).round()}% surge pricing',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: scheme.onTertiaryContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Text(
-                          '₹$_estimatedEarning',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -479,12 +598,12 @@ class _RequestRoutePreviewScreenState extends State<RequestRoutePreviewScreen> {
                         child: OutlinedButton(
                           onPressed: _actionLoading ? null : _rejectRequest,
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
+                            side: BorderSide(color: scheme.error),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Reject Request',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(color: scheme.error),
                           ),
                         ),
                       ),
@@ -531,16 +650,18 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: scheme.outlineVariant),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.white70),
+          Icon(icon, size: 20, color: scheme.primary),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,17 +669,17 @@ class _InfoChip extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
-                  color: Colors.white54,
+                  color: scheme.onSurface.withOpacity(0.6),
                 ),
               ),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: scheme.onSurface,
                 ),
               ),
             ],
@@ -567,4 +688,4 @@ class _InfoChip extends StatelessWidget {
       ),
     );
   }
-  }
+}

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
 import '../services/request_firestore_service.dart';
+import '../utils/snackbar_helper.dart';
+import '../widgets/request_status_chip.dart';
+import 'track_mechanic_screen.dart';
 
 class MyRequestsScreen extends StatefulWidget {
   const MyRequestsScreen({super.key});
@@ -27,42 +32,26 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
 
   // ---------------- HELPERS ----------------
 
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'accepted':
-        return Colors.blueAccent;
-      case 'on the way':
-        return Colors.orangeAccent;
-      case 'completed':
-        return Colors.greenAccent;
-      case 'cancelled':
-        return Colors.redAccent;
-      default:
-        return Colors.amber;
-    }
-  }
-
-  bool _isActive(String status) {
-    return status.toLowerCase() == 'pending' ||
-        status.toLowerCase() == 'accepted' ||
-        status.toLowerCase() == 'on the way';
-  }
-
   String _formatDate(DateTime d) {
-    return "${d.day}/${d.month}/${d.year}  ${d.hour}:${d.minute.toString().padLeft(2, '0')}";
+    final formatter = DateFormat('dd/MM/yyyy  HH:mm');
+    return formatter.format(d);
   }
 
   // ---------------- CARD UI ----------------
 
   Widget _requestCard(Map<String, dynamic> r, String requestId) {
-    final status = (r["status"] ?? "pending").toString();
-    final isPending = status.toLowerCase() == "pending";
+    final scheme = Theme.of(context).colorScheme;
+    
+    final statusString = (r["status"] ?? "pending").toString();
+    final status = parseRequestStatus(statusString);
+    
     final vehicleType = r["vehicleType"] ?? r["vehicle"] ?? "N/A";
     final issue = r["issue"] ?? "";
     final createdAt = r["createdAt"] as DateTime?;
 
-    return Card(
-      color: const Color(0xFF1C1C1C),
+    // Build the card body
+    final cardBody = Card(
+      color: scheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -70,11 +59,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: scheme.primary,
               child: Text(
                 vehicleType.isNotEmpty ? vehicleType[0].toUpperCase() : "R",
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: scheme.onPrimary,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -86,20 +77,28 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
                 children: [
                   Text(
                     issue.length > 50 ? '${issue.substring(0, 50)}...' : issue,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     "Vehicle: $vehicleType",
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
                   if (createdAt != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       _formatDate(createdAt),
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.white38),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurface.withOpacity(0.4),
+                      ),
                     ),
                   ],
                 ],
@@ -110,34 +109,19 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _statusColor(status)),
-                    // ignore: deprecated_member_use
-                    color: _statusColor(status).withOpacity(0.15),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: _statusColor(status),
-                    ),
-                  ),
-                ),
+                RequestStatusChip(status: status),
 
                 // CANCEL BUTTON
-                if (isPending) ...[
+                if (status.isCancellable) ...[
                   const SizedBox(height: 6),
                   TextButton(
                     onPressed: () => _confirmCancel(requestId),
-                    child: const Text(
+                    child: Text(
                       "Cancel",
-                      style:
-                          TextStyle(color: Colors.redAccent, fontSize: 12),
+                      style: TextStyle(
+                        color: scheme.error,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -147,37 +131,68 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
         ),
       ),
     );
+
+    // Wrap in InkWell only when trackable
+    if (!status.isTrackable) return cardBody;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TrackMechanicScreen(
+              requestId: requestId,
+            ),
+          ),
+        );
+      },
+      child: cardBody,
+    );
   }
 
   // ---------------- CANCEL ----------------
 
   void _confirmCancel(String requestId) {
+    final scheme = Theme.of(context).colorScheme;
+    
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Cancel Request"),
-        content:
-            const Text("Are you sure you want to cancel this request?"),
+        backgroundColor: scheme.surface,
+        title: Text(
+          "Cancel Request",
+          style: TextStyle(color: scheme.onSurface),
+        ),
+        content: Text(
+          "Are you sure you want to cancel this request?",
+          style: TextStyle(color: scheme.onSurface.withOpacity(0.8)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("No"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+            ),
             onPressed: () async {
               Navigator.pop(context);
               try {
                 await _requestService.cancelRequest(requestId);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Request cancelled")),
+                  SnackBarHelper.showInfo(
+                    context,
+                    "Request cancelled",
                   );
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Failed to cancel request: ${e.toString()}")),
+                  SnackBarHelper.showError(
+                    context,
+                    "Failed to cancel request: ${e.toString()}",
                   );
                 }
               }
@@ -193,11 +208,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Requests"),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: scheme.primary,
           tabs: const [
             Tab(text: "ACTIVE"),
             Tab(text: "HISTORY"),
@@ -208,7 +226,11 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
         stream: _requestService.getUserRequestsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                color: scheme.primary,
+              ),
+            );
           }
 
           if (snapshot.hasError) {
@@ -216,11 +238,17 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  Icon(
+                    Icons.error_outline,
+                    color: scheme.error,
+                    size: 48,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.white70),
+                    style: TextStyle(
+                      color: scheme.onSurface.withOpacity(0.7),
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -236,17 +264,21 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return TabBarView(
               controller: _tabController,
-              children: const [
+              children: [
                 Center(
                   child: Text(
                     "No requests found.",
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(
+                      color: scheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
                 ),
                 Center(
                   child: Text(
                     "No requests found.",
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(
+                      color: scheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
                 ),
               ],
@@ -254,8 +286,21 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
           }
 
           final requests = snapshot.data!;
-          final active = requests.where((r) => _isActive(r["status"])).toList();
-          final history = requests.where((r) => !_isActive(r["status"])).toList();
+          
+          // Parse statuses once
+          final requestsWithStatus = requests.map((r) {
+            final statusString = (r["status"] ?? "pending").toString();
+            final status = parseRequestStatus(statusString);
+            return {...r, '_parsedStatus': status};
+          }).toList();
+
+          final active = requestsWithStatus
+              .where((r) => (r['_parsedStatus'] as RequestStatus).isActive)
+              .toList();
+          
+          final history = requestsWithStatus
+              .where((r) => !(r['_parsedStatus'] as RequestStatus).isActive)
+              .toList();
 
           return TabBarView(
             controller: _tabController,
@@ -270,11 +315,15 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
   }
 
   Widget _buildList(List<Map<String, dynamic>> list) {
+    final scheme = Theme.of(context).colorScheme;
+    
     if (list.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           "No active requests",
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(
+            color: scheme.onSurface.withOpacity(0.7),
+          ),
         ),
       );
     }
@@ -282,7 +331,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: list.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final request = list[i];
         final requestId = request["requestId"] ?? request["id"] ?? "";
@@ -292,11 +341,15 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
   }
 
   Widget _buildHistory(List<Map<String, dynamic>> list) {
+    final scheme = Theme.of(context).colorScheme;
+    
     if (list.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           "No request history",
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(
+            color: scheme.onSurface.withOpacity(0.7),
+          ),
         ),
       );
     }
@@ -304,32 +357,40 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: list.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final r = list[i];
         final requestId = r["requestId"] ?? r["id"] ?? "";
         final vehicleType = r["vehicleType"] ?? r["vehicle"] ?? "N/A";
         final issue = r["issue"] ?? "";
-        final status = (r["status"] ?? "pending").toString();
+        
+        final statusString = (r["status"] ?? "pending").toString();
+        final status = parseRequestStatus(statusString);
+        
         final createdAt = r["createdAt"] as DateTime?;
 
         return Card(
-          color: const Color(0xFF1C1C1C),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: scheme.surfaceContainerHighest,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: scheme.primary,
               child: Text(
                 vehicleType.isNotEmpty ? vehicleType[0].toUpperCase() : "R",
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: scheme.onPrimary,
                 ),
               ),
             ),
             title: Text(
               issue.length > 50 ? '${issue.substring(0, 50)}...' : issue,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,34 +398,24 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
                 const SizedBox(height: 4),
                 Text(
                   "Vehicle: $vehicleType",
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurface.withOpacity(0.7),
+                  ),
                 ),
                 if (createdAt != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     _formatDate(createdAt),
-                    style: const TextStyle(fontSize: 11, color: Colors.white38),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurface.withOpacity(0.4),
+                    ),
                   ),
                 ],
               ],
             ),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _statusColor(status)),
-                // ignore: deprecated_member_use
-                color: _statusColor(status).withOpacity(0.15),
-              ),
-              child: Text(
-                status.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: _statusColor(status),
-                ),
-              ),
-            ),
+            trailing: RequestStatusChip(status: status),
           ),
         );
       },

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
+import '../utils/snackbar_helper.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -7,9 +9,56 @@ class ProfileScreen extends StatelessWidget {
 
   final AuthService _auth = AuthService();
 
+  /// Extracted logout confirmation dialog
+  void _confirmLogout(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: scheme.surface,
+        title: Text(
+          "Logout",
+          style: TextStyle(color: scheme.onSurface),
+        ),
+        content: Text(
+          "Are you sure you want to logout?",
+          style: TextStyle(color: scheme.onSurface.withOpacity(0.8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await _auth.logout();
+              
+              if (!context.mounted) return;
+              
+              SnackBarHelper.showInfo(context, 'Logged out successfully');
+              
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',
+                (r) => false,
+              );
+            },
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final yellow = Theme.of(context).colorScheme.primary;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -19,53 +68,33 @@ class ProfileScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Logout",
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Logout"),
-                  content: const Text("Are you sure you want to logout?"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel"),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await _auth.logout();
-                        Navigator.pushNamedAndRemoveUntil(
-                          // ignore: use_build_context_synchronously
-                          context,
-                          '/login',
-                          (r) => false,
-                        );
-                      },
-                      child: const Text("Logout"),
-                    ),
-                  ],
-                ),
-              );
-            },
+            onPressed: () => _confirmLogout(context),
           ),
         ],
       ),
-
-      // ✅ FIXED TYPE HERE
-      body: FutureBuilder<Map<String, dynamic>?>(
-        future: _auth.getCurrentUserProfile(),
+      body: StreamBuilder<Map<String, dynamic>?>(
+        stream: _auth.getMyProfileStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                color: scheme.primary,
+              ),
+            );
           }
 
           if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text("Could not load profile."));
+            return Center(
+              child: Text(
+                "Could not load profile.",
+                style: TextStyle(color: scheme.onSurface),
+              ),
+            );
           }
 
           final profile = snapshot.data!;
 
-          // ✅ Safe read from Firestore map
+          // Safe read from Firestore map
           final name = (profile["name"] ?? "User").toString();
           final email = (profile["email"] ?? "").toString();
           final phone = (profile["phone"] ?? "").toString();
@@ -83,30 +112,23 @@ class ProfileScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 45,
-                        backgroundColor: yellow,
+                        backgroundColor: scheme.primary,
                         child: Text(
                           initial,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 42,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: scheme.onPrimary,
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        email,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
+                          color: scheme.onSurface,
                         ),
                       ),
                     ],
@@ -116,14 +138,18 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 30),
 
                 // ---------------- CONTACT INFORMATION ----------------
-                const Text(
+                Text(
                   "Contact Information",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 12),
 
                 Card(
-                  color: const Color(0xFF1C1C1C),
+                  color: scheme.surfaceContainerHighest,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -133,25 +159,38 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.phone, color: Colors.white70),
+                            Icon(
+                              Icons.phone,
+                              color: scheme.onSurface.withOpacity(0.7),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 phone,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: scheme.onSurface.withOpacity(0.7),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const Divider(height: 24, color: Colors.white24),
+                        Divider(
+                          height: 24,
+                          color: scheme.outlineVariant,
+                        ),
                         Row(
                           children: [
-                            const Icon(Icons.email, color: Colors.white70),
+                            Icon(
+                              Icons.email,
+                              color: scheme.onSurface.withOpacity(0.7),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 email,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: scheme.onSurface,
+                                ),
                               ),
                             ),
                           ],
@@ -167,6 +206,10 @@ class ProfileScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                    ),
                     icon: const Icon(Icons.edit),
                     label: const Text("Edit Profile"),
                     onPressed: () async {
@@ -185,44 +228,15 @@ class ProfileScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.logout, color: Colors.red),
-                    label: const Text(
+                    icon: Icon(Icons.logout, color: scheme.error),
+                    label: Text(
                       "Logout",
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: scheme.error),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.red),
+                      side: BorderSide(color: scheme.error),
                     ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text("Logout"),
-                          content: const Text(
-                            "Are you sure you want to logout?",
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text("Cancel"),
-                            ),
-                            ElevatedButton(
-                              onPressed: () async {
-                                Navigator.pop(context);
-                                await _auth.logout();
-                                Navigator.pushNamedAndRemoveUntil(
-                                  // ignore: use_build_context_synchronously
-                                  context,
-                                  '/login',
-                                  (r) => false,
-                                );
-                              },
-                              child: const Text("Logout"),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                    onPressed: () => _confirmLogout(context),
                   ),
                 ),
 
@@ -230,8 +244,10 @@ class ProfileScreen extends StatelessWidget {
 
                 Center(
                   child: Text(
-                    "MechResQ • Demo App",
-                    style: TextStyle(color: Colors.grey[600]),
+                    "MechResQ • v1.0.0",
+                    style: TextStyle(
+                      color: scheme.onSurface.withOpacity(0.5),
+                    ),
                   ),
                 ),
               ],

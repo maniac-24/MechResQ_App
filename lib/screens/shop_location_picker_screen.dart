@@ -31,6 +31,101 @@ const double kDefaultLat = 20.5937;
 const double kDefaultLng = 78.9629;
 
 /// ------------------------------------------------------
+/// DARK MODE MAP STYLE (Optional Enhancement)
+/// ------------------------------------------------------
+const String _darkMapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [{"color": "#242f3e"}]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{"color": "#242f3e"}]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#746855"}]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#d59563"}]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#d59563"}]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [{"color": "#263c3f"}]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#6b9a76"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [{"color": "#38414e"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.stroke",
+    "stylers": [{"color": "#212a37"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#9ca5b3"}]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [{"color": "#746855"}]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [{"color": "#1f2835"}]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#f3d19c"}]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [{"color": "#2f3948"}]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#d59563"}]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{"color": "#17263c"}]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#515c6d"}]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.stroke",
+    "stylers": [{"color": "#17263c"}]
+  }
+]
+''';
+
+/// ------------------------------------------------------
 /// SCREEN
 /// ------------------------------------------------------
 class ShopLocationPickerScreen extends StatefulWidget {
@@ -69,13 +164,20 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
   /// PERMISSION + INITIAL LOCATION
   /// ------------------------------------------------------
   Future<void> _initPermissionAndLocation() async {
+    final scheme = Theme.of(context).colorScheme;
+
     final allow = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (c) => AlertDialog(
-        title: const Text(kTitle),
-        content: const Text(
+        backgroundColor: scheme.surface,
+        title: Text(
+          kTitle,
+          style: TextStyle(color: scheme.onSurface),
+        ),
+        content: Text(
           '$kPrivacyText\n\nAllow location to auto-center your workshop?',
+          style: TextStyle(color: scheme.onSurface.withOpacity(0.8)),
         ),
         actions: [
           TextButton(
@@ -83,6 +185,10 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
             child: const Text('Not now'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: const Text('Allow'),
           ),
@@ -141,8 +247,20 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
   /// ------------------------------------------------------
   /// MAP EVENTS
   /// ------------------------------------------------------
-  void _onMapCreated(GoogleMapController controller) {
+  void _onMapCreated(GoogleMapController controller) async {
     _mapController = controller;
+
+    // Apply dark mode map style if theme is dark
+    final brightness = Theme.of(context).brightness;
+    if (brightness == Brightness.dark) {
+      try {
+        await controller.setMapStyle(_darkMapStyle);
+      } catch (e) {
+        // Map styling is optional, continue if it fails
+        debugPrint('Failed to set map style: $e');
+      }
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _mapReady = true);
     });
@@ -199,6 +317,8 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
   /// ------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(kTitle),
@@ -229,23 +349,31 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
             onTap: _updateMarker,
           ),
 
+          // Loading overlay
           if (!_mapReady)
-            const Center(
+            Center(
               child: Card(
+                color: scheme.surfaceContainerHigh,
                 child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 12),
-                      Text('Loading map…'),
+                      CircularProgressIndicator(
+                        color: scheme.primary,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Loading map…',
+                        style: TextStyle(color: scheme.onSurface),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
 
+          // Hint banner
           if (_showHint)
             Positioned(
               top: 16,
@@ -253,54 +381,62 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
               right: 16,
               child: SafeArea(
                 child: Material(
-                  elevation: 2,
+                  color: scheme.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
                       '$kPrivacyText\n\nTap or drag the pin to set location.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurface.withOpacity(0.8),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
 
+          // Error banner
           if (_error != null)
             Positioned(
               top: 110,
               left: 16,
               right: 16,
               child: Material(
-                color: Theme.of(context).colorScheme.errorContainer,
+                color: scheme.errorContainer,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     _error!,
                     style: TextStyle(
-                      color:
-                          Theme.of(context).colorScheme.onErrorContainer,
+                      color: scheme.onErrorContainer,
                     ),
                   ),
                 ),
               ),
             ),
 
+          // Use Current Location button
           Positioned(
             bottom: 100,
             left: 16,
             right: 16,
             child: ElevatedButton.icon(
-              onPressed:
-                  _permissionGranted && !_busy && _mapReady
-                      ? _moveToCurrentLocation
-                      : null,
+              onPressed: _permissionGranted && !_busy && _mapReady
+                  ? _moveToCurrentLocation
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: scheme.secondaryContainer,
+                foregroundColor: scheme.onSecondaryContainer,
+              ),
               icon: const Icon(Icons.my_location),
               label: const Text('Use Current Location'),
             ),
           ),
 
+          // Save button
           Positioned(
             bottom: 24,
             left: 16,
@@ -308,15 +444,17 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
             child: ElevatedButton(
               onPressed: _mapReady && !_busy ? _saveLocation : null,
               style: ElevatedButton.styleFrom(
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: scheme.onPrimary,
                       ),
                     )
                   : const Text('Save Shop Location'),

@@ -1,0 +1,97 @@
+{
+  "@@locale": "kn",
+
+  "appName": "MechResQ",
+  "cancel": "ರದ್ದು ಮಾಡಿ",
+  "close": "ಮುಚ್ಚಿ",
+  "confirm": "ದೃಢೀಕರಿಸಿ",
+  "save": "ಉಳಿಸಿ",
+  "delete": "ಅಳಿಸಿ",
+  "edit": "ಸಂಪಾದಿಸಿ",
+  "search": "ಹುಡುಕಿ",
+  "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+  "error": "ದೋಷ",
+  "success": "ಯಶಸ್ಸು",
+  "warning": "ಎಚ್ಚರಿಕೆ",
+  "info": "ಮಾಹಿತಿ",
+
+  "languageEnglish": "ಇಂಗ್ಲಿಷ್",
+  "languageHindi": "ಹಿಂದಿ",
+  "languageKannada": "ಕನ್ನಡ",
+  "languageTamil": "ತಮಿಳು",
+  "languageTelugu": "ತೆಲುಗು",
+
+  "settings": "ಸೆಟ್ಟಿಂಗ್ಸ್",
+  "appearance": "ದೃಶ್ಯ",
+  "theme": "ಥೀಮ್",
+  "appLanguage": "ಆಪ್ ಭಾಷೆ",
+  "chooseTheme": "ಥೀಮ್ ಆಯ್ಕೆಮಾಡಿ",
+  "themeLight": "ಲೈಟ್",
+  "themeDark": "ಡಾರ್ಕ್",
+  "themeSystem": "ಸಿಸ್ಟಮ್",
+  "themeSetTo": "{theme} ಗೆ ಥೀಮ್ ಹೊಂದಿಸಲಾಗಿದೆ",
+  "@themeSetTo": {
+    "placeholders": { "theme": { "type": "String" } }
+  },
+
+  "languageChangedTo": "ಭಾಷೆಯನ್ನು {language} ಗೆ ಬದಲಾಯಿಸಲಾಗಿದೆ",
+  "@languageChangedTo": {
+    "placeholders": { "language": { "type": "String" } }
+  },
+
+  "notifications": "ಅಧಿಸೂಚನೆಗಳು",
+  "enableNotifications": "ಅಧಿಸೂಚನೆಗಳನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ",
+  "notificationsEnabled": "ನೀವು ಅಪ್‌ಡೇಟ್‌ಗಳನ್ನು ಪಡೆಯುತ್ತೀರಿ",
+  "notificationsDisabled": "ಎಲ್ಲಾ ಅಧಿಸೂಚನೆಗಳು ನಿಷ್ಕ್ರಿಯ",
+  "systemNotificationSettings": "ಸಿಸ್ಟಮ್ ಅಧಿಸೂಚನೆ ಸೆಟ್ಟಿಂಗ್ಸ್",
+  "manageOnDeviceLevel": "ಡಿವೈಸ್ ಮಟ್ಟದಲ್ಲಿ ನಿರ್ವಹಿಸಿ",
+  "openingSystemSettings": "ಸಿಸ್ಟಮ್ ಅಧಿಸೂಚನೆ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗುತ್ತಿದೆ...",
+
+  "storage": "ಸ್ಟೋರೇಜ್",
+  "cache": "ಕ್ಯಾಶ್",
+  "currentlyUsing": "ಪ್ರಸ್ತುತ {size} ಬಳಸಲಾಗುತ್ತಿದೆ",
+  "@currentlyUsing": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+  "clear": "ಸ್ಪಷ್ಟಗೊಳಿಸಿ",
+  "clearCache": "ಕ್ಯಾಶ್ ತೆರವುಗೊಳಿಸಿ",
+  "clearCacheMessage": "{size} ತಾತ್ಕಾಲಿಕ ಡೇಟಾ ಅಳಿಸಲಾಗುತ್ತದೆ.",
+  "@clearCacheMessage": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+  "cacheCleared": "ಕ್ಯಾಶ್ ಯಶಸ್ವಿಯಾಗಿ ತೆರವುಗೊಳಿಸಲಾಗಿದೆ",
+
+  "dataUsage": "ಡೇಟಾ ಬಳಕೆ",
+  "storageBreakdown": "ಸ್ಟೋರೇಜ್ ವಿವರ",
+  "total": "ಒಟ್ಟು",
+  "profilePhotos": "ಪ್ರೊಫೈಲ್ ಫೋಟೋಗಳು",
+  "vehicleImages": "ವಾಹನ ಚಿತ್ರಗಳು",
+  "cachedMaps": "ಕ್ಯಾಶ್ ಮಾಡಿದ ನಕ್ಷೆಗಳು",
+  "serviceHistory": "ಸೇವೆ ಇತಿಹಾಸ",
+
+  "legal": "ಕಾನೂನು",
+  "privacyPolicy": "ಗೌಪ್ಯತಾ ನೀತಿ",
+  "termsAndConditions": "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು",
+
+  "privacyPolicyContent": "ಕೊನೆಯ ನವೀಕರಣ: ಜನವರಿ 2026",
+  "termsContent": "MechResQ ಬಳಕೆ ಮಾಡುವ ಮೂಲಕ ನೀವು ಷರತ್ತುಗಳನ್ನು ಒಪ್ಪುತ್ತೀರಿ.",
+
+  "about": "ಬಗ್ಗೆ",
+  "aboutMechResQ": "MechResQ ಬಗ್ಗೆ",
+  "version": "ಆವೃತ್ತಿ",
+  "aboutContent": "MechResQ\nಆವೃತ್ತಿ {version} (ಬಿಲ್ಡ್ {build})",
+  "@aboutContent": {
+    "placeholders": {
+      "version": { "type": "String" },
+      "build": { "type": "String" }
+    }
+  },
+
+  "dangerZone": "ಅಪಾಯ ವಲಯ",
+  "resetAppPreferences": "ಆಪ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ರೀಸೆಟ್ ಮಾಡಿ",
+  "restoreAllDefaults": "ಎಲ್ಲಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಸ್ಥಾಪಿಸಿ",
+  "resetPreferences": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ರೀಸೆಟ್ ಮಾಡಿ",
+  "resetPreferencesMessage": "ಥೀಮ್ ಮತ್ತು ಭಾಷೆ ಮರುಸ್ಥಾಪಿಸಲಾಗುತ್ತದೆ.",
+  "reset": "ರೀಸೆಟ್",
+  "allPreferencesReset": "ಎಲ್ಲಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಸ್ಥಾಪಿಸಲಾಗಿದೆ"
+}

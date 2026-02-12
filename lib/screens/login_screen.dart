@@ -1,10 +1,15 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import '../services/google_auth_service.dart';
 import '../services/auth_service.dart';
+import '../utils/snackbar_helper.dart';
+import '../l10n/app_localizations.dart';
+
+class UserRoles {
+  UserRoles._();
+  static const String mechanic = 'mechanic';
+  static const String user = 'user';
+}
 
 enum LoginType { user, mechanic }
 
@@ -17,13 +22,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _loading = false;
   bool _hidePassword = true;
-
   LoginType _loginType = LoginType.user;
 
   final GoogleAuthService _googleAuth = GoogleAuthService();
@@ -36,8 +39,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ✅ EMAIL/PASSWORD LOGIN (FIREBASE)
   Future<void> _loginWithEmail() async {
+    final l10n = AppLocalizations.of(context)!;
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
@@ -50,68 +54,80 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await _afterLogin();
     } catch (e) {
-      _showMsg("Login failed: ${e.toString()}");
+      if (!mounted) return;
+      SnackBarHelper.showError(
+        context,
+        "${l10n.loginFailed}: ${e.toString()}",
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  // ✅ GOOGLE LOGIN
   Future<void> _loginWithGoogle() async {
+    final l10n = AppLocalizations.of(context)!;
+
     setState(() => _loading = true);
 
     try {
       await _googleAuth.signInWithGoogle();
       await _afterLogin();
     } catch (e) {
-      _showMsg("Google login failed: ${e.toString()}");
+      if (!mounted) return;
+      SnackBarHelper.showError(
+        context,
+        "${l10n.googleLoginFailed}: ${e.toString()}",
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  // ✅ AFTER LOGIN → CHECK PROFILE IN FIRESTORE
   Future<void> _afterLogin() async {
+    final l10n = AppLocalizations.of(context)!;
+
     try {
       final profile = await _backendAuth.getMyProfile();
 
       if (profile == null) {
-        throw Exception("Profile not found");
+        throw Exception(l10n.profileNotFound);
       }
 
       final role = profile["role"]?.toString();
 
       if (!mounted) return;
 
-      if (role == "mechanic") {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          "/mechanic_root",
-          (_) => false,
-        );
-      } else {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          "/home",
-          (_) => false,
-        );
-      }
-    } catch (e) {
-      // profile not found → go to register page
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        switch (role) {
+          case UserRoles.mechanic:
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              "/mechanic_root",
+              (_) => false,
+            );
+            break;
+
+          case UserRoles.user:
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              "/home",
+              (_) => false,
+            );
+            break;
+
+          default:
+            _goToRegister();
+        }
+      });
+    } catch (_) {
       if (!mounted) return;
-
-      if (_loginType == LoginType.mechanic) {
-        Navigator.pushReplacementNamed(context, "/register_mechanic");
-      } else {
-        Navigator.pushReplacementNamed(context, "/register_user");
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _goToRegister();
+      });
     }
-  }
-
-  void _showMsg(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _goToRegister() {
@@ -124,8 +140,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Login"), centerTitle: true),
+      appBar: AppBar(
+        title: Text(l10n.loginTitle),
+        centerTitle: true,
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(18),
@@ -135,35 +157,37 @@ class _LoginScreenState extends State<LoginScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  const Text(
-                    "Welcome Back",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  Text(
+                    l10n.welcomeBack,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 20),
 
-                  // ✅ EMAIL
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: "Email",
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.emailLabel,
+                      prefixIcon: const Icon(Icons.email),
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (v) {
                       final val = (v ?? "").trim();
-                      if (val.isEmpty) return "Enter email";
-                      if (!val.contains("@")) return "Enter valid email";
+                      if (val.isEmpty) return l10n.enterEmail;
+                      if (!val.contains("@")) return l10n.enterValidEmail;
                       return null;
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // ✅ PASSWORD
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _hidePassword,
                     decoration: InputDecoration(
-                      labelText: "Password",
+                      labelText: l10n.passwordLabel,
                       prefixIcon: const Icon(Icons.lock),
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
@@ -178,99 +202,92 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (v) {
                       final val = (v ?? "").trim();
-                      if (val.isEmpty) return "Enter password";
-                      if (val.length < 6) return "Min 6 characters";
+                      if (val.isEmpty) return l10n.enterPassword;
+                      if (val.length < 6) {
+                        return l10n.minCharacters(6);
+                      }
                       return null;
                     },
                   ),
 
-                  // ✅ FORGOT PASSWORD
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () =>
                           Navigator.pushNamed(context, "/forgot_password"),
-                      child: const Text(
-                        "Forgot Password?",
-                        style: TextStyle(color: Colors.white70),
-                      ),
+                      child: Text(l10n.forgotPassword),
                     ),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  // ✅ ROLE RADIO
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Radio<LoginType>(
                         value: LoginType.user,
                         groupValue: _loginType,
-                        onChanged: (v) => setState(() => _loginType = v!),
+                        activeColor: scheme.primary,
+                        onChanged: (v) =>
+                            setState(() => _loginType = v!),
                       ),
-                      const Text("User"),
+                      Text(l10n.userRole),
+
                       const SizedBox(width: 24),
+
                       Radio<LoginType>(
                         value: LoginType.mechanic,
                         groupValue: _loginType,
-                        onChanged: (v) => setState(() => _loginType = v!),
+                        activeColor: scheme.primary,
+                        onChanged: (v) =>
+                            setState(() => _loginType = v!),
                       ),
-                      const Text("Mechanic"),
+                      Text(l10n.mechanicRole),
                     ],
                   ),
 
                   const SizedBox(height: 18),
 
-                  // ✅ LOGIN BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _loading ? null : _loginWithEmail,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
                         child: _loading
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text("Login"),
+                            ? const CircularProgressIndicator()
+                            : Text(l10n.loginTitle),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // ✅ GOOGLE BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: _loading ? null : _loginWithGoogle,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Text("Sign in with Google"),
+                      onPressed:
+                          _loading ? null : _loginWithGoogle,
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        child: Text(l10n.signInWithGoogle),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // ✅ REGISTER LINK
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        "Don't have an account? ",
-                        style: TextStyle(color: Colors.white70),
-                      ),
+                      Text(l10n.noAccount),
                       TextButton(
                         onPressed: _goToRegister,
-                        child: const Text(
-                          "Register",
+                        child: Text(
+                          l10n.register,
                           style: TextStyle(
-                            color: Colors.yellow,
+                            color: scheme.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

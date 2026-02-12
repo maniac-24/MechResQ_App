@@ -5,6 +5,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
+import '../utils/snackbar_helper.dart';
+
 class MyVehiclesScreen extends StatefulWidget {
   const MyVehiclesScreen({super.key});
 
@@ -39,79 +41,62 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   }
 
   // ------------------------------------------------
-  // PERMISSION BOTTOM SHEET
+  // PERMISSION EXPLANATION (only WHY, not HOW)
   // ------------------------------------------------
-  Future<String?> _showPermissionBottomSheet() async {
-    return await showModalBottomSheet<String>(
+  Future<bool?> _showPermissionExplanation() async {
+    final scheme = Theme.of(context).colorScheme;
+    
+    return await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E1E2E),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: const Text(
-                    'MechResQ wants to access your storage',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: const Text(
-                    'This is needed to upload vehicle images',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Divider(color: Colors.white12, height: 1),
-                _permissionOption(context,
-                    title: 'While using the app', value: 'while_using'),
-                const Divider(color: Colors.white12, height: 1),
-                _permissionOption(context,
-                    title: 'Only this time', value: 'only_this_time'),
-                const Divider(color: Colors.white12, height: 1),
-                _permissionOption(context, title: "Don't allow", value: null),
-              ],
-            ),
-          ),
-        ),
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-    );
-  }
-
-  Widget _permissionOption(BuildContext context,
-      {required String title, required String? value}) {
-    return InkWell(
-      onTap: () => Navigator.pop(context, value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF6C9FFF),
-            fontSize: 17,
-            fontWeight: FontWeight.w400,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Storage Access Needed',
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'We need access to your photos to upload vehicle images.',
+                style: TextStyle(
+                  color: scheme.onSurface.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Continue',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+            ],
           ),
-          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -121,57 +106,53 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   // FILE PICKER BOTTOM SHEET
   // ------------------------------------------------
   Future<String?> _showFilePickerBottomSheet() async {
+    final scheme = Theme.of(context).colorScheme;
+    
     return await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E1E2E),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: const Text(
-                    'Upload Vehicle Image',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Upload Vehicle Image',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.camera_alt,
-                    title: 'Take Photo',
-                    value: 'camera'),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.photo_library,
-                    title: 'Choose from Gallery',
-                    value: 'gallery'),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.insert_drive_file,
-                    title: 'Choose PDF / File',
-                    value: 'file'),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.close, title: 'Cancel', value: null),
-              ],
-            ),
+              ),
+              const SizedBox(height: 20),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.camera_alt,
+                  title: 'Take Photo',
+                  value: 'camera'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.photo_library,
+                  title: 'Choose from Gallery',
+                  value: 'gallery'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.insert_drive_file,
+                  title: 'Choose PDF / File',
+                  value: 'file'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.close, title: 'Cancel', value: null),
+            ],
           ),
         ),
       ),
@@ -180,18 +161,20 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 
   Widget _fileOption(BuildContext context,
       {required IconData icon, required String title, required String? value}) {
+    final scheme = Theme.of(context).colorScheme;
+    
     return InkWell(
       onTap: () => Navigator.pop(context, value),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF6C9FFF), size: 22),
+            Icon(icon, color: scheme.primary, size: 22),
             const SizedBox(width: 16),
             Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF6C9FFF),
+              style: TextStyle(
+                color: scheme.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
               ),
@@ -203,76 +186,62 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   }
 
   // ------------------------------------------------
-  // CHOOSE IMAGE WITH PERMISSION FLOW
+  // ✅ CORRECTED PERMISSION FLOW
   // ------------------------------------------------
   Future<void> _chooseImage() async {
     try {
-      // Step 1: ALWAYS show permission bottom sheet first
-      final permissionChoice = await _showPermissionBottomSheet();
-
-      // User tapped "Don't allow" or dismissed
-      if (permissionChoice == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Permission denied. Cannot upload images.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-
-      // Step 2: Check and request actual system permission
-      PermissionStatus permissionStatus;
+      // Check permission status FIRST
+      PermissionStatus storageStatus;
       if (Platform.isAndroid) {
-        final androidInfo = await DeviceInfoPlugin().androidInfo;
-        if (androidInfo.version.sdkInt >= 33) {
-          permissionStatus = await Permission.photos.status;
-        } else {
-          permissionStatus = await Permission.storage.status;
-        }
+        final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+        storageStatus = sdk >= 33
+            ? await Permission.photos.status
+            : await Permission.storage.status;
       } else {
-        permissionStatus = await Permission.storage.status;
+        storageStatus = await Permission.storage.status;
       }
 
-      // Request permission if not granted
-      if (!permissionStatus.isGranted) {
-        PermissionStatus newPermission;
-        if (Platform.isAndroid) {
-          final androidInfo = await DeviceInfoPlugin().androidInfo;
-          if (androidInfo.version.sdkInt >= 33) {
-            newPermission = await Permission.photos.request();
-          } else {
-            newPermission = await Permission.storage.request();
-          }
-        } else {
-          newPermission = await Permission.storage.request();
-        }
+      // ONLY show explanation if permission is NOT granted
+      if (!storageStatus.isGranted) {
+        if (!mounted) return;
+        final userWantsToContinue = await _showPermissionExplanation();
 
-        // Handle system permission denial
-        if (newPermission.isDenied) {
+        if (userWantsToContinue != true) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Permission denied. Cannot upload images.'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
-            ),
+          SnackBarHelper.showWarning(
+            context,
+            'Permission needed to upload images.',
           );
           return;
         }
 
-        // Handle permanently denied → redirect to settings
+        // Now request actual system permission
+        PermissionStatus newPermission;
+        if (Platform.isAndroid) {
+          final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+          newPermission = sdk >= 33
+              ? await Permission.photos.request()
+              : await Permission.storage.request();
+        } else {
+          newPermission = await Permission.storage.request();
+        }
+
+        // Handle denial
+        if (newPermission.isDenied) {
+          if (!mounted) return;
+          SnackBarHelper.showError(
+            context,
+            'Permission denied. Cannot upload images.',
+          );
+          return;
+        }
+
+        // Handle permanently denied
         if (newPermission.isPermanentlyDenied) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Permission permanently denied. Opening settings...'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
+          SnackBarHelper.showWarning(
+            context,
+            'Permission permanently denied. Opening settings...',
           );
           await Future.delayed(const Duration(seconds: 2));
           await openAppSettings();
@@ -280,7 +249,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
         }
       }
 
-      // Step 3: Permission granted → show file picker options
+      // Permission is now granted → show file picker
       if (!mounted) return;
       final fileChoice = await _showFilePickerBottomSheet();
       if (fileChoice == null) return;
@@ -288,18 +257,21 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
       XFile? result;
 
       if (fileChoice == 'camera') {
-        // Request camera permission separately
-        final cameraPermission = await Permission.camera.request();
-        if (!cameraPermission.isGranted) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Camera permission required'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
+        // Check camera status FIRST
+        final cameraStatus = await Permission.camera.status;
+
+        if (!cameraStatus.isGranted) {
+          final cameraPermission = await Permission.camera.request();
+          if (!cameraPermission.isGranted) {
+            if (!mounted) return;
+            SnackBarHelper.showError(
+              context,
+              'Camera permission required',
+            );
+            return;
+          }
         }
+
         result = await _picker.pickImage(
           source: ImageSource.camera,
           imageQuality: 85,
@@ -320,7 +292,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
         );
       }
 
-      // Step 4: File selected successfully
+      // File selected successfully
       if (result != null && result.path.isNotEmpty) {
         setState(() {
           _image = File(result!.path);
@@ -328,28 +300,16 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
         });
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(child: Text('Image selected: ${result.name}')),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        SnackBarHelper.showSuccess(
+          context,
+          'Image selected: ${result.name}',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
+      SnackBarHelper.showError(
+        context,
+        'Error: ${e.toString()}',
       );
     }
   }
@@ -357,8 +317,9 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Vehicle added successfully ✅')),
+    SnackBarHelper.showSuccess(
+      context,
+      'Vehicle added successfully ✅',
     );
 
     _formKey.currentState!.reset();
@@ -371,146 +332,124 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final yellow = Theme.of(context).colorScheme.primary;
+    final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      // ✅ ONLY "My Vehicles" - no menu, no actions
-      appBar: AppBar(
-        title: const Text('My Vehicles'),
-        centerTitle: true,
-        automaticallyImplyLeading: false, // ✅ Removes menu/back button
-        actions: const [], // ✅ No actions
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Vehicle Name
-              _input(_nameC, 'Vehicle Name'),
-              const SizedBox(height: 14),
-
-              // Vehicle Type
-              _dropdown(
-                label: 'Vehicle Type',
-                value: _vehicleType,
-                items: _vehicleTypes,
-                onChanged: (v) => setState(() => _vehicleType = v),
-              ),
-              const SizedBox(height: 14),
-
-              // Make | Model
-              Row(
-                children: [
-                  Expanded(child: _input(_makeC, 'Make')),
-                  const SizedBox(width: 12),
-                  Expanded(child: _input(_modelC, 'Model')),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              // Year | License Plate
-              Row(
-                children: [
-                  Expanded(
-                    child: _input(
-                      _yearC,
-                      'Year (e.g., 2020)',
-                      keyboard: TextInputType.number,
-                    ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _input(_nameC, 'Vehicle Name'),
+            const SizedBox(height: 14),
+            _dropdown(
+              label: 'Vehicle Type',
+              value: _vehicleType,
+              items: _vehicleTypes,
+              onChanged: (v) => setState(() => _vehicleType = v),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: _input(_makeC, 'Make')),
+                const SizedBox(width: 12),
+                Expanded(child: _input(_modelC, 'Model')),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _input(
+                    _yearC,
+                    'Year (e.g., 2020)',
+                    keyboard: TextInputType.number,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(child: _input(_plateC, 'License Plate')),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              // Image picker row
-              Row(
-                children: [
-                  Container(
-                    width: 120,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white24),
-                      borderRadius: BorderRadius.circular(6),
-                      color: Colors.white10,
-                    ),
-                    child: _image == null
-                        ? const Center(
-                            child: Text(
-                              'No image',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          )
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: Image.file(
-                              _image!,
-                              fit: BoxFit.cover,
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: _input(_plateC, 'License Plate')),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  width: 120,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: scheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(6),
+                    color: scheme.surfaceContainerHigh,
+                  ),
+                  child: _image == null
+                      ? Center(
+                          child: Text(
+                            'No image',
+                            style: TextStyle(
+                              color: scheme.onSurface.withOpacity(0.7),
                             ),
                           ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.file(
+                            _image!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
                   ),
-                  const SizedBox(width: 16),
-                  ElevatedButton.icon(
+                  onPressed: _chooseImage,
+                  icon: const Icon(Icons.image),
+                  label: const Text('Choose Image'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 26),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      _formKey.currentState!.reset();
+                      setState(() {
+                        _vehicleType = null;
+                        _image = null;
+                        _imageName = null;
+                      });
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: yellow,
-                      foregroundColor: Colors.black,
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    onPressed: _chooseImage,
-                    icon: const Icon(Icons.image),
-                    label: const Text('Choose Image'),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 26),
-
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        _formKey.currentState!.reset();
-                        setState(() {
-                          _vehicleType = null;
-                          _image = null;
-                          _imageName = null;
-                        });
-                      },
-                      child: const Text('Cancel'),
+                    onPressed: _submit,
+                    child: const Text(
+                      'Add Vehicle',
+                      style: TextStyle(fontSize: 16),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: yellow,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: _submit,
-                      child: const Text(
-                        'Add Vehicle',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      // ✅ NO FloatingActionButton (+ button removed)
     );
   }
-
-  // ---------------- HELPERS ----------------
 
   Widget _input(
     TextEditingController controller,

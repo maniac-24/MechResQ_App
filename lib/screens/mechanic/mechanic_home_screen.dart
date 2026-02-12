@@ -11,6 +11,12 @@ import 'active_service_screen.dart';
 import 'service_history_screen.dart';
 import 'earnings_screen.dart';
 
+/// ============================================================================
+/// MECHANIC HOME SCREEN - PRODUCTION READY
+/// ============================================================================
+/// Real-time status management, theme-driven colors, live streams.
+/// No forced offline on init, no hard-coded colors, no fake data.
+/// ============================================================================
 class MechanicHomeScreen extends StatefulWidget {
   const MechanicHomeScreen({super.key});
 
@@ -28,18 +34,18 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
   @override
   void initState() {
     super.initState();
-
     mechanicId = FirebaseAuth.instance.currentUser!.uid;
-
-    // 🔴 DEFAULT AFTER LOGIN → OFFLINE
-    _statusService.setOnlineStatus(
-      mechanicId: mechanicId,
-      isOnline: false,
-    );
+    // ✅ FIXED: No forced offline on init
+    // Status is controlled ONLY by:
+    // 1. User toggle
+    // 2. Logout
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGOUT (FORCES OFFLINE)
+  // ═══════════════════════════════════════════════════════════════════════════
   Future<void> _logout() async {
-    // Force OFFLINE on logout
+    // ✅ Force OFFLINE on logout
     await _statusService.setOnlineStatus(
       mechanicId: mechanicId,
       isOnline: false,
@@ -55,8 +61,13 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UI
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mechanic Home'),
@@ -80,37 +91,43 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
             builder: (context, profileSnap) {
               final name = profileSnap.data?['name'] ?? 'Mechanic';
 
-              return Padding(
+              return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ══════════════════════════════════════════════════════════
                     // GREETING
+                    // ══════════════════════════════════════════════════════════
                     Text(
                       'Welcome, $name 👨‍🔧',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
 
                     const SizedBox(height: 16),
 
-                    // ONLINE / OFFLINE SWITCH
+                    // ══════════════════════════════════════════════════════════
+                    // ONLINE / OFFLINE SWITCH (THEME-AWARE)
+                    // ══════════════════════════════════════════════════════════
                     Card(
+                      elevation: 2,
                       child: SwitchListTile(
                         title: Text(
                           isOnline ? 'Online' : 'Offline',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color:
-                                isOnline ? Colors.green : Colors.red,
+                            color: isOnline ? scheme.secondary : scheme.error,
                           ),
                         ),
                         subtitle: Text(
                           isOnline
                               ? 'You can receive requests'
                               : 'You will not receive requests',
+                          style: TextStyle(
+                            color: scheme.onSurface.withOpacity(0.7),
+                          ),
                         ),
                         value: isOnline,
                         onChanged: (value) async {
@@ -120,25 +137,25 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                           );
                         },
                         secondary: Icon(
-                          isOnline
-                              ? Icons.toggle_on
-                              : Icons.toggle_off,
+                          isOnline ? Icons.toggle_on : Icons.toggle_off,
                           size: 36,
-                          color:
-                              isOnline ? Colors.green : Colors.red,
+                          color: isOnline ? scheme.secondary : scheme.error,
                         ),
+                        activeColor: scheme.secondary,
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // ROW 1
+                    // ══════════════════════════════════════════════════════════
+                    // ROW 1: INCOMING + ACTIVE
+                    // ══════════════════════════════════════════════════════════
                     Row(
                       children: [
                         Expanded(
                           child: StreamBuilder<int>(
-                            stream: _requestService
-                                .getIncomingRequestsCountStream(
+                            stream:
+                                _requestService.getIncomingRequestsCountStream(
                               mechanicId: mechanicId,
                               isOnline: isOnline,
                             ),
@@ -146,9 +163,8 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                               return _InfoCard(
                                 title: 'Incoming',
                                 value: '${snap.data ?? 0}',
-                                icon:
-                                    Icons.notifications_active,
-                                color: Colors.orange,
+                                icon: Icons.notifications_active,
+                                type: _InfoCardType.incoming,
                                 onTap: isOnline
                                     ? () {
                                         Navigator.push(
@@ -168,14 +184,13 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                         Expanded(
                           child: StreamBuilder<int>(
                             stream: _requestService
-                                .getActiveRequestsCountStream(
-                                    mechanicId),
+                                .getActiveRequestsCountStream(mechanicId),
                             builder: (context, snap) {
                               return _InfoCard(
                                 title: 'Active',
                                 value: '${snap.data ?? 0}',
                                 icon: Icons.build_circle,
-                                color: Colors.green,
+                                type: _InfoCardType.active,
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -194,20 +209,21 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
 
                     const SizedBox(height: 12),
 
-                    // ROW 2
+                    // ══════════════════════════════════════════════════════════
+                    // ROW 2: COMPLETED + EARNINGS
+                    // ══════════════════════════════════════════════════════════
                     Row(
                       children: [
                         Expanded(
                           child: StreamBuilder<int>(
                             stream: _requestService
-                                .getCompletedRequestsCountStream(
-                                    mechanicId),
+                                .getCompletedRequestsCountStream(mechanicId),
                             builder: (context, snap) {
                               return _InfoCard(
                                 title: 'Completed',
                                 value: '${snap.data ?? 0}',
                                 icon: Icons.history,
-                                color: Colors.blue,
+                                type: _InfoCardType.completed,
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -223,18 +239,27 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _InfoCard(
-                            title: 'Earnings',
-                            value: '₹4,500',
-                            icon: Icons.account_balance_wallet,
-                            color: Colors.purple,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const EarningsScreen(),
-                                ),
+                          child: StreamBuilder<double>(
+                            stream: _requestService
+                                .getTotalEarningsStream(mechanicId),
+                            builder: (context, snap) {
+                              final earnings = snap.data ?? 0;
+                              return _InfoCard(
+                                title: 'Earnings',
+                                value: snap.connectionState ==
+                                        ConnectionState.waiting
+                                    ? '—'
+                                    : '₹${earnings.toStringAsFixed(0)}',
+                                icon: Icons.account_balance_wallet,
+                                type: _InfoCardType.earnings,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const EarningsScreen(),
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
@@ -252,26 +277,48 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
   }
 }
 
-// ===================================================
-// INFO CARD
-// ===================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// INFO CARD TYPE (SEMANTIC DESIGN)
+// ═══════════════════════════════════════════════════════════════════════════
+enum _InfoCardType { incoming, active, completed, earnings }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INFO CARD (100% THEME-DRIVEN)
+// ═══════════════════════════════════════════════════════════════════════════
 class _InfoCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  final Color color;
+  final _InfoCardType type;
   final VoidCallback? onTap;
 
   const _InfoCard({
     required this.title,
     required this.value,
     required this.icon,
-    required this.color,
+    required this.type,
     this.onTap,
   });
 
+  // ✅ SEMANTIC COLOR RESOLUTION (THEME-DRIVEN)
+  Color _resolveColor(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    switch (type) {
+      case _InfoCardType.incoming:
+        return scheme.tertiary ?? Colors.orange.shade600;
+      case _InfoCardType.active:
+        return scheme.primary;
+      case _InfoCardType.completed:
+        return scheme.secondary;
+      case _InfoCardType.earnings:
+        return scheme.primary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final color = _resolveColor(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -285,13 +332,19 @@ class _InfoCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(title),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
             ],
           ),
         ),

@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
 
+/// Type-safe chat message model
+class ChatMessage {
+  final bool isUser;
+  final String text;
+  final DateTime timestamp;
+
+  ChatMessage({
+    required this.isUser,
+    required this.text,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+}
+
 class ResQAssistScreen extends StatefulWidget {
   const ResQAssistScreen({super.key});
 
@@ -11,13 +24,20 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scroll = ScrollController();
 
-  final List<Map<String, String>> _messages = [
-    {
-      "from": "bot",
-      "text":
-          "Hi 👋 I’m ResQAssist.\nTell me your vehicle problem and I’ll guide you."
-    }
+  final List<ChatMessage> _messages = [
+    ChatMessage(
+      isUser: false,
+      text:
+          "Hi 👋 I'm ResQAssist.\nTell me your vehicle problem and I'll guide you.",
+    ),
   ];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
 
   // ---------------- SEND MESSAGE ----------------
   void _sendMessage() {
@@ -25,7 +45,7 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
     if (text.isEmpty) return;
 
     setState(() {
-      _messages.add({"from": "user", "text": text});
+      _messages.add(ChatMessage(isUser: true, text: text));
     });
 
     _controller.clear();
@@ -33,10 +53,12 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
 
     // Simulate AI thinking delay
     Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+
       final reply = _smartReply(text);
 
       setState(() {
-        _messages.add({"from": "bot", "text": reply});
+        _messages.add(ChatMessage(isUser: false, text: reply));
       });
       _scrollDown();
     });
@@ -58,7 +80,9 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
       return "🔋 This may be a battery issue.\nTry checking connections or request a jump-start service.";
     }
 
-    if (msg.contains("fuel") || msg.contains("petrol") || msg.contains("diesel")) {
+    if (msg.contains("fuel") ||
+        msg.contains("petrol") ||
+        msg.contains("diesel")) {
       return "⛽ Looks like a fuel-related issue.\nYou can request fuel assistance from nearby services.";
     }
 
@@ -70,48 +94,27 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
       return "📍 Your live location will be shared automatically when you request a mechanic or SOS.";
     }
 
-    return "🤖 Thanks for the info.\nI’ll help you find the best mechanic nearby based on your issue.";
+    return "🤖 Thanks for the info.\nI'll help you find the best mechanic nearby based on your issue.";
   }
 
   // ---------------- AUTO SCROLL ----------------
   void _scrollDown() {
     Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      if (!mounted || !_scroll.hasClients) return;
+      
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     });
-  }
-
-  // ---------------- CHAT BUBBLE ----------------
-  Widget _bubble(String text, bool isUser) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.all(12),
-        constraints: const BoxConstraints(maxWidth: 280),
-        decoration: BoxDecoration(
-          color: isUser ? Colors.blueAccent : const Color(0xFF1C1C1C),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isUser ? Colors.white : Colors.white70,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
   }
 
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("ResQAssist 🤖"),
@@ -125,9 +128,11 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
               padding: const EdgeInsets.all(14),
               itemCount: _messages.length,
               itemBuilder: (_, i) {
-                final m = _messages[i];
-                final isUser = m["from"] == "user";
-                return _bubble(m["text"]!, isUser);
+                final message = _messages[i];
+                return ChatBubble(
+                  message: message,
+                  scheme: scheme,
+                );
               },
             ),
           ),
@@ -135,9 +140,9 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
           // INPUT AREA
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: Colors.white12),
+                top: BorderSide(color: scheme.outlineVariant),
               ),
             ),
             child: Row(
@@ -147,28 +152,86 @@ class _ResQAssistScreenState extends State<ResQAssistScreen> {
                     controller: _controller,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _sendMessage(),
+                    style: TextStyle(color: scheme.onSurface),
                     decoration: InputDecoration(
                       hintText: "Describe your issue...",
+                      hintStyle: TextStyle(
+                        color: scheme.onSurface.withOpacity(0.5),
+                      ),
+                      filled: true,
+                      fillColor: scheme.surfaceContainerHigh,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(color: scheme.outlineVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(color: scheme.primary, width: 2),
                       ),
                       contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 14),
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: Colors.blueAccent,
+                Container(
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    shape: BoxShape.circle,
+                  ),
                   child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
+                    icon: Icon(Icons.send, color: scheme.onPrimary),
                     onPressed: _sendMessage,
                   ),
-                )
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Reusable chat bubble widget with Material 3 design
+class ChatBubble extends StatelessWidget {
+  final ChatMessage message;
+  final ColorScheme scheme;
+
+  const ChatBubble({
+    super.key,
+    required this.message,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment:
+          message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(maxWidth: 280),
+        decoration: BoxDecoration(
+          color: message.isUser
+              ? scheme.primaryContainer
+              : scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          message.text,
+          style: TextStyle(
+            color: message.isUser
+                ? scheme.onPrimaryContainer
+                : scheme.onSurface.withOpacity(0.8),
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }

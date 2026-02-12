@@ -1,5 +1,4 @@
 // lib/screens/create_request_screen.dart
-// ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -12,6 +11,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 import '../services/request_firestore_service.dart';
 import '../utils/location_permission_utils.dart';
+import '../utils/snackbar_helper.dart';
 import '../widgets/map_location_picker.dart';
 
 class CreateRequestScreen extends StatefulWidget {
@@ -64,56 +64,55 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   // PERMISSION BOTTOM SHEET
   // ------------------------------------------------
   Future<String?> _showPermissionBottomSheet() async {
+    final scheme = Theme.of(context).colorScheme;
+    
     return await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E1E2E),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: const Text(
-                    'MechResQ wants to access your storage',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'MechResQ wants to access your storage',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: const Text(
-                    'This is needed to attach photos to your request',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
-                    textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'This is needed to attach photos to your request',
+                  style: TextStyle(
+                    color: scheme.onSurface.withOpacity(0.6),
+                    fontSize: 14,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
-                const Divider(color: Colors.white12, height: 1),
-                _permissionOption(context,
-                    title: 'While using the app', value: 'while_using'),
-                const Divider(color: Colors.white12, height: 1),
-                _permissionOption(context,
-                    title: 'Only this time', value: 'only_this_time'),
-                const Divider(color: Colors.white12, height: 1),
-                _permissionOption(context, title: "Don't allow", value: null),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _permissionOption(context,
+                  title: 'While using the app', value: 'while_using'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _permissionOption(context,
+                  title: 'Only this time', value: 'only_this_time'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _permissionOption(context, title: "Don't allow", value: null),
+            ],
           ),
         ),
       ),
@@ -122,14 +121,16 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
 
   Widget _permissionOption(BuildContext context,
       {required String title, required String? value}) {
+    final scheme = Theme.of(context).colorScheme;
+    
     return InkWell(
       onTap: () => Navigator.pop(context, value),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
         child: Text(
           title,
-          style: const TextStyle(
-            color: Color(0xFF6C9FFF),
+          style: TextStyle(
+            color: scheme.primary,
             fontSize: 17,
             fontWeight: FontWeight.w400,
           ),
@@ -143,57 +144,53 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   // FILE PICKER BOTTOM SHEET
   // ------------------------------------------------
   Future<String?> _showFilePickerBottomSheet() async {
+    final scheme = Theme.of(context).colorScheme;
+    
     return await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E1E2E),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: const Text(
-                    'Upload ID Document',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Upload ID Document',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.camera_alt,
-                    title: 'Take Photo',
-                    value: 'camera'),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.photo_library,
-                    title: 'Choose from Gallery',
-                    value: 'gallery'),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.insert_drive_file,
-                    title: 'Choose PDF / File',
-                    value: 'file'),
-                const Divider(color: Colors.white12, height: 1),
-                _fileOption(context,
-                    icon: Icons.close, title: 'Cancel', value: null),
-              ],
-            ),
+              ),
+              const SizedBox(height: 20),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.camera_alt,
+                  title: 'Take Photo',
+                  value: 'camera'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.photo_library,
+                  title: 'Choose from Gallery',
+                  value: 'gallery'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.insert_drive_file,
+                  title: 'Choose PDF / File',
+                  value: 'file'),
+              Divider(color: scheme.outlineVariant, height: 1),
+              _fileOption(context,
+                  icon: Icons.close, title: 'Cancel', value: null),
+            ],
           ),
         ),
       ),
@@ -202,18 +199,20 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
 
   Widget _fileOption(BuildContext context,
       {required IconData icon, required String title, required String? value}) {
+    final scheme = Theme.of(context).colorScheme;
+    
     return InkWell(
       onTap: () => Navigator.pop(context, value),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF6C9FFF), size: 22),
+            Icon(icon, color: scheme.primary, size: 22),
             const SizedBox(width: 16),
             Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF6C9FFF),
+              style: TextStyle(
+                color: scheme.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
               ),
@@ -235,12 +234,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
       // User tapped "Don't allow" or dismissed
       if (permissionChoice == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Permission denied. Cannot attach files.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
+        SnackBarHelper.showError(
+          context,
+          'Permission denied. Cannot attach files.',
         );
         return;
       }
@@ -275,12 +271,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         // Handle system permission denial
         if (newPermission.isDenied) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Permission denied. Cannot attach files.'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
-            ),
+          SnackBarHelper.showError(
+            context,
+            'Permission denied. Cannot attach files.',
           );
           return;
         }
@@ -288,12 +281,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         // Handle permanently denied → redirect to settings
         if (newPermission.isPermanentlyDenied) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Permission permanently denied. Opening settings...'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
+          SnackBarHelper.showWarning(
+            context,
+            'Permission permanently denied. Opening settings...',
           );
           await Future.delayed(const Duration(seconds: 2));
           await openAppSettings();
@@ -313,11 +303,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         final cameraPermission = await Permission.camera.request();
         if (!cameraPermission.isGranted) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Camera permission required'),
-              backgroundColor: Colors.red,
-            ),
+          SnackBarHelper.showError(
+            context,
+            'Camera permission required',
           );
           return;
         }
@@ -348,28 +336,16 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         });
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(child: Text('Attached: ${result.name}')),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        SnackBarHelper.showSuccess(
+          context,
+          'Attached: ${result.name}',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
+      SnackBarHelper.showError(
+        context,
+        'Error: ${e.toString()}',
       );
     }
   }
@@ -442,27 +418,27 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         if (_detectedAddress == null || _detectedAddress!.isEmpty) {
           final address =
               await _reverseGeocode(confirmed.latitude, confirmed.longitude);
-          if (mounted)
+          if (mounted) {
             setState(() => _detectedAddress = address ??
                 '${confirmed.latitude.toStringAsFixed(5)}, ${confirmed.longitude.toStringAsFixed(5)}');
+          }
         }
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Location confirmed.')));
+          SnackBarHelper.showSuccess(context, 'Location confirmed');
         }
       }
     } on LocationServiceDisabledException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Location services are disabled. Please turn on GPS.')),
+        SnackBarHelper.showError(
+          context,
+          'Location services are disabled. Please turn on GPS.',
         );
       }
     } on Exception catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not get location: ${e.toString()}')),
+        SnackBarHelper.showError(
+          context,
+          'Could not get location: ${e.toString()}',
         );
       }
     } finally {
@@ -475,13 +451,14 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   Future<void> _onSubmit() async {
     final issueText = _descriptionController.text.trim();
     if (issueText.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please describe the issue.')));
+      SnackBarHelper.showError(context, 'Please describe the issue.');
       return;
     }
     if (!_locationDetected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please detect your location first.')));
+      SnackBarHelper.showError(
+        context,
+        'Please detect your location first.',
+      );
       return;
     }
 
@@ -530,8 +507,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit request: ${e.toString()}')),
+        SnackBarHelper.showError(
+          context,
+          'Failed to submit request: ${e.toString()}',
         );
       }
     } finally {
@@ -542,13 +520,14 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   Widget _mechanicHeader() {
     if (_mechanic == null) return const SizedBox.shrink();
 
+    final scheme = Theme.of(context).colorScheme;
     final name = _mechanic!['name'] ?? '';
     final shop = _mechanic!['shopName'] ?? '';
     final rating = _mechanic!['rating'] ?? '';
     final distance = _mechanic!['distanceKm'] ?? '';
 
     return Card(
-      color: const Color(0xFF151515),
+      color: scheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -557,35 +536,68 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                  style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20)),
+              backgroundColor: scheme.primary,
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                style: TextStyle(
+                  color: scheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(shop,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16)),
-                const SizedBox(height: 6),
-                Text(name, style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 6),
-                Row(children: [
-                  const Icon(Icons.star, size: 14, color: Colors.amber),
-                  const SizedBox(width: 6),
-                  Text(rating, style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.place, size: 14, color: Colors.white70),
-                  const SizedBox(width: 6),
-                  Text('$distance km',
-                      style: const TextStyle(color: Colors.white70)),
-                ]),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    shop,
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    name,
+                    style: TextStyle(
+                      color: scheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.star,
+                        size: 14,
+                        color: scheme.tertiary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        rating,
+                        style: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.place,
+                        size: 14,
+                        color: scheme.onSurface.withOpacity(0.7),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$distance km',
+                        style: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -594,9 +606,13 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   }
 
   Widget _attachedChips() {
+    final scheme = Theme.of(context).colorScheme;
+    
     if (_attachedFiles.isEmpty) {
-      return const Text('No photos attached',
-          style: TextStyle(color: Colors.white70));
+      return Text(
+        'No photos attached',
+        style: TextStyle(color: scheme.onSurface.withOpacity(0.7)),
+      );
     }
     return Wrap(
       spacing: 8,
@@ -604,8 +620,8 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
       children: _attachedFiles.map((f) {
         return Chip(
           label: Text(f),
-          backgroundColor: Colors.white10,
-          labelStyle: const TextStyle(color: Colors.white),
+          backgroundColor: scheme.surfaceContainerHighest,
+          labelStyle: TextStyle(color: scheme.onSurface),
           onDeleted: () => _removeAttached(f),
         );
       }).toList(),
@@ -613,7 +629,8 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   }
 
   Widget _vehicleSelector() {
-    final primary = Theme.of(context).colorScheme.primary;
+    final scheme = Theme.of(context).colorScheme;
+    
     Widget btn(String type, IconData icon) {
       final selected = _selectedVehicle == type;
       return Expanded(
@@ -623,30 +640,44 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
             height: 64,
             margin: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
-              color: selected ? primary : Colors.transparent,
+              color: selected ? scheme.primary : scheme.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade700),
+              border: Border.all(color: scheme.outlineVariant),
             ),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, color: selected ? Colors.black : Colors.white),
-              const SizedBox(height: 6),
-              Text(type,
-                  style: TextStyle(color: selected ? Colors.black : Colors.white)),
-            ]),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: selected ? scheme.onPrimary : scheme.onSurface,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  type,
+                  style: TextStyle(
+                    color: selected ? scheme.onPrimary : scheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Row(children: [
-      btn('Car', Icons.directions_car),
-      btn('Motorcycle', Icons.motorcycle),
-      btn('Truck', Icons.local_shipping),
-    ]);
+    return Row(
+      children: [
+        btn('Car', Icons.directions_car),
+        btn('Motorcycle', Icons.motorcycle),
+        btn('Truck', Icons.local_shipping),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Service Request'),
@@ -657,159 +688,225 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 820),
             child: Card(
-              color: const Color(0xFF1A1A1A),
+              color: scheme.surfaceContainerHighest,
               elevation: 6,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 18.0, horizontal: 18.0),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18.0,
+                  horizontal: 18.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_mechanic != null) _mechanicHeader(),
                     const SizedBox(height: 4),
-                    const Text('Request Details',
-                        style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
+                    Text(
+                      'Request Details',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    const Text(
-                        'Provide details so a mechanic can assist you quickly.',
-                        style: TextStyle(color: Colors.white70)),
+                    Text(
+                      'Provide details so a mechanic can assist you quickly.',
+                      style: TextStyle(
+                        color: scheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
                     const SizedBox(height: 14),
-                    Row(children: [
-                      const Icon(Icons.local_taxi, color: Colors.yellow),
-                      const SizedBox(width: 8),
-                      const Text('Select Vehicle Type',
+                    Row(
+                      children: [
+                        Icon(Icons.local_taxi, color: scheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Select Vehicle Type',
                           style: TextStyle(
-                              fontWeight: FontWeight.w600, color: Colors.white)),
-                    ]),
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
                     _vehicleSelector(),
                     const SizedBox(height: 14),
-                    Row(children: [
-                      const Icon(Icons.build, color: Colors.yellow),
-                      const SizedBox(width: 8),
-                      const Text('Describe the Issue',
+                    Row(
+                      children: [
+                        Icon(Icons.build, color: scheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Describe the Issue',
                           style: TextStyle(
-                              fontWeight: FontWeight.w600, color: Colors.white)),
-                    ]),
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _descriptionController,
                       minLines: 4,
                       maxLines: 8,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: scheme.onSurface),
                       decoration: InputDecoration(
                         hintText:
                             "Describe the problem (e.g., engine stalls when idling)...",
-                        hintStyle: const TextStyle(color: Colors.white60),
+                        hintStyle: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.6),
+                        ),
                         filled: true,
-                        fillColor: Colors.white12,
+                        fillColor: scheme.surfaceContainerLowest,
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white10)),
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: scheme.outlineVariant),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(children: [
-                      ElevatedButton.icon(
-                        onPressed: _attachFile,
-                        icon: const Icon(Icons.add_a_photo, color: Colors.black),
-                        label: const Text('Attach Photo',
-                            style: TextStyle(color: Colors.black)),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.yellow),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: _attachedChips()),
-                    ]),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _attachFile,
+                          icon: Icon(
+                            Icons.add_a_photo,
+                            color: scheme.onPrimary,
+                          ),
+                          label: Text(
+                            'Attach Photo',
+                            style: TextStyle(color: scheme.onPrimary),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: scheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: _attachedChips()),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    Row(children: [
-                      const Icon(Icons.place, color: Colors.yellow),
-                      const SizedBox(width: 8),
-                      const Text('Your Location',
+                    Row(
+                      children: [
+                        Icon(Icons.place, color: scheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Your Location',
                           style: TextStyle(
-                              fontWeight: FontWeight.w600, color: Colors.white)),
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        onPressed: _detecting ? null : _detectLocation,
-                        icon: _detecting
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.black))
-                            : const Icon(Icons.my_location, color: Colors.black),
-                        label: Text(
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        const Spacer(),
+                        ElevatedButton.icon(
+                          onPressed: _detecting ? null : _detectLocation,
+                          icon: _detecting
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: scheme.onPrimary,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.my_location,
+                                  color: scheme.onPrimary,
+                                ),
+                          label: Text(
                             _detecting ? 'Detecting...' : 'Detect My Location',
-                            style: const TextStyle(color: Colors.black)),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.yellow),
-                      ),
-                    ]),
+                            style: TextStyle(color: scheme.onPrimary),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: scheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     if (_locationDetected) ...[
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: Colors.green.withOpacity(0.25))),
-                        child: Text('Live location detected successfully!',
-                            style: TextStyle(color: Colors.greenAccent.shade100)),
+                          color: scheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: scheme.tertiary),
+                        ),
+                        child: Text(
+                          'Live location detected successfully!',
+                          style: TextStyle(color: scheme.onTertiaryContainer),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         readOnly: true,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: scheme.onSurface),
                         decoration: InputDecoration(
-                            prefixIcon:
-                                const Icon(Icons.location_on, color: Colors.white70),
-                            border: OutlineInputBorder(),
-                            hintText: _detectedAddress,
-                            hintStyle: const TextStyle(color: Colors.white70),
-                            filled: true,
-                            fillColor: Colors.white12),
+                          prefixIcon: Icon(
+                            Icons.location_on,
+                            color: scheme.onSurface.withOpacity(0.7),
+                          ),
+                          border: const OutlineInputBorder(),
+                          hintText: _detectedAddress,
+                          hintStyle: TextStyle(
+                            color: scheme.onSurface.withOpacity(0.7),
+                          ),
+                          filled: true,
+                          fillColor: scheme.surfaceContainerLowest,
+                        ),
                       ),
                       const SizedBox(height: 12),
                     ] else
-                      const Text(
-                          'Location not detected. Tap "Detect My Location" to set your location on the map.',
-                          style: TextStyle(color: Colors.white70)),
+                      Text(
+                        'Location not detected. Tap "Detect My Location" to set your location on the map.',
+                        style: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
                     const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: _submitting ? null : _onSubmit,
                         icon: _submitting
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.black))
-                            : const Icon(Icons.send, color: Colors.black),
+                                  strokeWidth: 2,
+                                  color: scheme.onPrimary,
+                                ),
+                              )
+                            : Icon(Icons.send, color: scheme.onPrimary),
                         label: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 14.0),
                           child: Text(
-                              _submitting ? 'Submitting...' : 'Submit Request',
-                              style: const TextStyle(color: Colors.black)),
+                            _submitting ? 'Submitting...' : 'Submit Request',
+                            style: TextStyle(color: scheme.onPrimary),
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.yellow),
+                          backgroundColor: scheme.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Center(
-                        child: Text(
-                            'Tip: Provide clear description and photos for faster help.',
-                            style: TextStyle(color: Colors.white70))),
+                    Center(
+                      child: Text(
+                        'Tip: Provide clear description and photos for faster help.',
+                        style: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -817,8 +914,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context),
                             child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12.0),
-                                child: Text('Cancel')),
+                              padding: EdgeInsets.symmetric(vertical: 12.0),
+                              child: Text('Cancel'),
+                            ),
                           ),
                         ),
                       ],

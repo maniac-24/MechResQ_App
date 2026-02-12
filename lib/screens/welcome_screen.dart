@@ -3,46 +3,20 @@
 import 'package:flutter/material.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/secondary_button.dart';
+import '../l10n/app_localizations.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
-  // HERO ICON WITH PNG LOGO
-  Widget _heroIcon() {
-    return Container(
-      width: 160,
-      height: 160,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black45,
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Image.asset(
-          'assets/mechresq_logo.png',   // <--- PNG LOGO HERE
-          width: 100,
-          height: 100,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final yellow = Theme.of(context).colorScheme.primary;
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20.0, vertical: 22.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 22.0),
           child: Column(
             children: [
               const SizedBox(height: 18),
@@ -51,62 +25,76 @@ class WelcomeScreen extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Icon(
                   Icons.warning_amber_rounded,
-                  color: yellow,
+                  color: scheme.primary,
                   size: 28,
                 ),
               ),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
               Text(
-                'MechResQ - Emergency Roadside Assistance',
+                l10n.welcomeTitle,
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: scheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
 
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
 
               Text(
-                'Your trusted partner for roadside assistance and vehicle repairs.',
+                l10n.welcomeSubtitle,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white70,
+                  color: scheme.onSurface.withOpacity(0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
 
-              SizedBox(height: 28),
+              const SizedBox(height: 28),
 
-              // PNG LOGO HERO ICON
-              _heroIcon(),
+              Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/mechresq_logo.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
 
-              Spacer(),
+              const Spacer(),
 
               PrimaryButton(
-                text: 'Login',
+                text: l10n.loginButton,
                 onPressed: () => Navigator.pushNamed(context, '/login'),
               ),
 
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               SecondaryButton(
-                text: 'Create User Account',
+                text: l10n.createUserAccountButton,
                 onPressed: () =>
                     Navigator.pushNamed(context, '/register_user'),
               ),
 
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               TextButton(
                 onPressed: () =>
                     Navigator.pushNamed(context, '/register_mechanic'),
                 child: Text(
-                  'Are you a mechanic? Register here',
-                  style: TextStyle(color: yellow),
+                  l10n.mechanicRegisterPrompt,
+                  style: TextStyle(color: scheme.primary),
                 ),
               ),
             ],
