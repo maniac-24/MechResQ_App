@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'theme.dart';
 import 'theme_controller.dart';
@@ -28,18 +29,14 @@ import 'screens/mechanic/mechanic_root_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 REQUIRED FOR FIREBASE
   await Firebase.initializeApp();
+  await initializeDateFormatting();
 
-  // 🔥 INITIALIZE LOCALE PROVIDER (loads saved locale or detects device)
   final localeProvider = LocaleProvider();
   await localeProvider.init();
 
   runZonedGuarded(
     () => runApp(
-      // ═══════════════════════════════════════════════════════════════════════
-      // MULTI-PROVIDER SETUP - Theme + Locale
-      // ═══════════════════════════════════════════════════════════════════════
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => ThemeController()),
@@ -56,7 +53,7 @@ Future<void> main() async {
 }
 
 // ======================================================
-// APP
+// APP ROOT
 // ======================================================
 
 class MechResQApp extends StatelessWidget {
@@ -64,43 +61,37 @@ class MechResQApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ═══════════════════════════════════════════════════════════════════════
-    // WATCH PROVIDERS - App rebuilds when theme or locale changes
-    // ═══════════════════════════════════════════════════════════════════════
     final themeController = context.watch<ThemeController>();
     final localeProvider = context.watch<LocaleProvider>();
 
     return MaterialApp(
-      title: 'MechResQ',
       debugShowCheckedModeBanner: false,
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // LOCALIZATION CONFIGURATION
-      // ═══════════════════════════════════════════════════════════════════════
-      locale: localeProvider.locale, // 🔥 CRITICAL: Reactive locale switching
-      
+
+      // ───────── LOCALIZATION ─────────
+      locale: localeProvider.locale,
       supportedLocales: AppLocalizations.supportedLocales,
-      
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // THEME CONFIGURATION
-      // ═══════════════════════════════════════════════════════════════════════
-      theme: ThemeData.light().copyWith(
-        colorScheme: ColorScheme.light(
-          primary: const Color(0xFFFFD700), // Yellow
-          secondary: const Color(0xFF263238),
-        ),
-      ),
-      darkTheme: AppTheme.hazardTheme(), // Your brand dark theme
-      themeMode: themeController.themeMode, // 🔥 CRITICAL: Reactive theme switching
 
-      // Always start with Splash
+      // ───────── THEMES ─────────
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.hazardTheme(),
+      themeMode: themeController.themeMode,
+
+      // ───────── LOCALIZED TITLE SAFELY ─────────
+      builder: (context, child) {
+        final l10n = AppLocalizations.of(context);
+        return Title(
+          title: l10n?.appName ?? 'MechResQ',
+          color: Theme.of(context).colorScheme.primary,
+          child: child!,
+        );
+      },
+
       home: const SplashScreen(),
 
       routes: {
@@ -118,21 +109,17 @@ class MechResQApp extends StatelessWidget {
         '/profile': (_) => ProfileScreen(),
         '/my_requests': (_) => MyRequestsScreen(),
         '/create_request': (_) => const CreateRequestScreen(),
-        '/request_success': (context) {
-          // RequestSuccessScreen reads arguments from ModalRoute.of(context) in its build method
-          return const RequestSuccessScreen();
-        },
+        '/request_success': (_) => const RequestSuccessScreen(),
         '/settings': (_) => const SettingsScreen(),
 
         // MECHANIC
         '/mechanic_root': (_) => const MechanicRootScreen(),
       },
+
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
           builder: (context) {
-            // Use localized error message if l10n available
             final l10n = AppLocalizations.of(context);
-            
             return Scaffold(
               body: Center(
                 child: Text(
@@ -150,7 +137,7 @@ class MechResQApp extends StatelessWidget {
 }
 
 // ======================================================
-// SPLASH (AUTH + ROLE DECIDER)
+// SPLASH SCREEN
 // ======================================================
 
 class SplashScreen extends StatefulWidget {
@@ -182,14 +169,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final role = await _auth.getRole();
 
-    if (role == 'mechanic') {
-      _go('/mechanic_root');
-    } else if (role == 'user') {
-      _go('/home');
-    } else {
-      // Safety fallback
-      await _auth.logout();
-      _go('/welcome');
+    switch (role) {
+      case 'mechanic':
+        _go('/mechanic_root');
+        break;
+      case 'user':
+        _go('/home');
+        break;
+      default:
+        await _auth.logout();
+        _go('/welcome');
     }
   }
 
@@ -199,15 +188,18 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF263238),
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+
+    return Scaffold(
+      backgroundColor: scheme.surface,
       body: Center(
         child: Text(
-          'MechResQ',
+          l10n?.appName ?? 'MechResQ',
           style: TextStyle(
             fontSize: 36,
-            color: Colors.white,
             fontWeight: FontWeight.bold,
+            color: scheme.primary,
           ),
         ),
       ),

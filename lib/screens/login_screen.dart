@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../services/google_auth_service.dart';
 import '../services/auth_service.dart';
 import '../utils/snackbar_helper.dart';
-import '../l10n/app_localizations.dart';
 
+/// User role constants for type-safe role checking
+/// (Should match UserRoles from home_router.dart)
 class UserRoles {
-  UserRoles._();
+  UserRoles._(); // Private constructor
+  
   static const String mechanic = 'mechanic';
   static const String user = 'user';
 }
@@ -22,11 +25,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _loading = false;
   bool _hidePassword = true;
+
   LoginType _loginType = LoginType.user;
 
   final GoogleAuthService _googleAuth = GoogleAuthService();
@@ -39,9 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ✅ EMAIL/PASSWORD LOGIN (FIREBASE)
   Future<void> _loginWithEmail() async {
-    final l10n = AppLocalizations.of(context)!;
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
@@ -57,16 +61,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       SnackBarHelper.showError(
         context,
-        "${l10n.loginFailed}: ${e.toString()}",
+        "Login failed: ${e.toString()}",
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  // ✅ GOOGLE LOGIN
   Future<void> _loginWithGoogle() async {
-    final l10n = AppLocalizations.of(context)!;
-
     setState(() => _loading = true);
 
     try {
@@ -76,30 +79,31 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       SnackBarHelper.showError(
         context,
-        "${l10n.googleLoginFailed}: ${e.toString()}",
+        "Google login failed: ${e.toString()}",
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  // ✅ AFTER LOGIN → CHECK PROFILE IN FIRESTORE
   Future<void> _afterLogin() async {
-    final l10n = AppLocalizations.of(context)!;
-
     try {
       final profile = await _backendAuth.getMyProfile();
 
       if (profile == null) {
-        throw Exception(l10n.profileNotFound);
+        throw Exception("Profile not found");
       }
 
       final role = profile["role"]?.toString();
 
       if (!mounted) return;
 
+      // Lifecycle-safe navigation using post-frame callback
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
 
+        // Type-safe role handling with fallback
         switch (role) {
           case UserRoles.mechanic:
             Navigator.pushNamedAndRemoveUntil(
@@ -118,14 +122,26 @@ class _LoginScreenState extends State<LoginScreen> {
             break;
 
           default:
-            _goToRegister();
+            // Unknown/corrupted role → redirect to appropriate registration
+            if (_loginType == LoginType.mechanic) {
+              Navigator.pushReplacementNamed(context, "/register_mechanic");
+            } else {
+              Navigator.pushReplacementNamed(context, "/register_user");
+            }
         }
       });
-    } catch (_) {
+    } catch (e) {
+      // profile not found → go to register page
       if (!mounted) return;
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _goToRegister();
+
+        if (_loginType == LoginType.mechanic) {
+          Navigator.pushReplacementNamed(context, "/register_mechanic");
+        } else {
+          Navigator.pushReplacementNamed(context, "/register_user");
+        }
       });
     }
   }
@@ -141,13 +157,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.loginTitle),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Login"), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(18),
@@ -158,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   Text(
-                    l10n.welcomeBack,
+                    "Welcome Back",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -167,27 +179,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // ✅ EMAIL
                   TextFormField(
                     controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: l10n.emailLabel,
-                      prefixIcon: const Icon(Icons.email),
-                      border: const OutlineInputBorder(),
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                      prefixIcon: Icon(Icons.email),
+                      border: OutlineInputBorder(),
                     ),
                     validator: (v) {
                       final val = (v ?? "").trim();
-                      if (val.isEmpty) return l10n.enterEmail;
-                      if (!val.contains("@")) return l10n.enterValidEmail;
+                      if (val.isEmpty) return "Enter email";
+                      if (!val.contains("@")) return "Enter valid email";
                       return null;
                     },
                   ),
                   const SizedBox(height: 12),
 
+                  // ✅ PASSWORD
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _hidePassword,
                     decoration: InputDecoration(
-                      labelText: l10n.passwordLabel,
+                      labelText: "Password",
                       prefixIcon: const Icon(Icons.lock),
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
@@ -202,23 +216,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (v) {
                       final val = (v ?? "").trim();
-                      if (val.isEmpty) return l10n.enterPassword;
-                      if (val.length < 6) {
-                        return l10n.minCharacters(6);
-                      }
+                      if (val.isEmpty) return "Enter password";
+                      if (val.length < 6) return "Min 6 characters";
                       return null;
                     },
                   ),
 
+                  // ✅ FORGOT PASSWORD
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () =>
                           Navigator.pushNamed(context, "/forgot_password"),
-                      child: Text(l10n.forgotPassword),
+                      child: Text(
+                        "Forgot Password?",
+                        style: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
                     ),
                   ),
 
+                  const SizedBox(height: 10),
+
+                  // ✅ ROLE RADIO
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -226,66 +247,83 @@ class _LoginScreenState extends State<LoginScreen> {
                         value: LoginType.user,
                         groupValue: _loginType,
                         activeColor: scheme.primary,
-                        onChanged: (v) =>
-                            setState(() => _loginType = v!),
+                        onChanged: (v) => setState(() => _loginType = v!),
                       ),
-                      Text(l10n.userRole),
-
+                      Text(
+                        "User",
+                        style: TextStyle(color: scheme.onSurface),
+                      ),
                       const SizedBox(width: 24),
-
                       Radio<LoginType>(
                         value: LoginType.mechanic,
                         groupValue: _loginType,
                         activeColor: scheme.primary,
-                        onChanged: (v) =>
-                            setState(() => _loginType = v!),
+                        onChanged: (v) => setState(() => _loginType = v!),
                       ),
-                      Text(l10n.mechanicRole),
+                      Text(
+                        "Mechanic",
+                        style: TextStyle(color: scheme.onSurface),
+                      ),
                     ],
                   ),
 
                   const SizedBox(height: 18),
 
+                  // ✅ LOGIN BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: scheme.primary,
+                        foregroundColor: scheme.onPrimary,
+                      ),
                       onPressed: _loading ? null : _loginWithEmail,
                       child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         child: _loading
-                            ? const CircularProgressIndicator()
-                            : Text(l10n.loginTitle),
+                            ? SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: scheme.onPrimary,
+                                ),
+                              )
+                            : const Text("Login"),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
+                  // ✅ GOOGLE BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed:
-                          _loading ? null : _loginWithGoogle,
-                      child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        child: Text(l10n.signInWithGoogle),
+                      onPressed: _loading ? null : _loginWithGoogle,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        child: Text("Sign in with Google"),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
+                  // ✅ REGISTER LINK
                   Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(l10n.noAccount),
+                      Text(
+                        "Don't have an account? ",
+                        style: TextStyle(
+                          color: scheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
                       TextButton(
                         onPressed: _goToRegister,
                         child: Text(
-                          l10n.register,
+                          "Register",
                           style: TextStyle(
                             color: scheme.primary,
                             fontWeight: FontWeight.bold,
