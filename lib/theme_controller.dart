@@ -3,58 +3,77 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// ============================================================================
-/// THEME CONTROLLER - PRODUCTION WITH SYSTEM THEME SUPPORT
-/// ============================================================================
-/// Manages theme mode (Light/Dark/System) with SharedPreferences persistence.
-/// Listens to OS theme changes via WidgetsBindingObserver.
+/// THEME CONTROLLER — PRODUCTION READY
+/// Supports Light / Dark / System
+/// Persists theme using SharedPreferences
+/// Listens to OS brightness changes
 /// ============================================================================
 class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
-  static const _themeKey = 'app_theme_mode';
+  static const String _themeKey = 'app_theme_mode';
 
   ThemeMode _themeMode = ThemeMode.system;
-  String _themeString = 'System';
 
   ThemeMode get themeMode => _themeMode;
-  String get themeString => _themeString;
 
-  /// Constructor - automatically loads saved theme and registers observer
+  String get themeString {
+    switch (_themeMode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      case ThemeMode.system:
+      default:
+        return 'System';
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CONSTRUCTOR
+  // ─────────────────────────────────────────────
   ThemeController() {
-    // ✅ CRITICAL: Register observer for system brightness changes
     WidgetsBinding.instance.addObserver(this);
-    _loadSavedTheme();
+    _loadTheme();
   }
 
-  /// Load theme from SharedPreferences on app start
-  Future<void> _loadSavedTheme() async {
+  // ─────────────────────────────────────────────
+  // LOAD SAVED THEME
+  // ─────────────────────────────────────────────
+  Future<void> _loadTheme() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedTheme = prefs.getString(_themeKey) ?? 'System';
-      _themeString = savedTheme;
-      _themeMode = _stringToThemeMode(savedTheme);
-      notifyListeners();
+      final saved = prefs.getString(_themeKey);
+
+      if (saved != null) {
+        _themeMode = _stringToThemeMode(saved);
+        notifyListeners();
+      }
     } catch (e) {
-      debugPrint('Failed to load theme: $e');
-      // Fallback to system theme
-      _themeString = 'System';
-      _themeMode = ThemeMode.system;
+      debugPrint('Theme load failed: $e');
     }
   }
 
-  /// Update theme and persist to SharedPreferences
-  Future<void> setTheme(String themeString) async {
+  // ─────────────────────────────────────────────
+  // SET THEME
+  // ─────────────────────────────────────────────
+  Future<void> setTheme(String value) async {
+    final newMode = _stringToThemeMode(value);
+
+    if (newMode == _themeMode) return; // Prevent unnecessary rebuild
+
+    _themeMode = newMode;
+    notifyListeners();
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_themeKey, themeString);
-      
-      _themeString = themeString;
-      _themeMode = _stringToThemeMode(themeString);
-      notifyListeners();
+      await prefs.setString(_themeKey, value);
     } catch (e) {
-      debugPrint('Failed to save theme: $e');
+      debugPrint('Theme save failed: $e');
     }
   }
 
-  /// Convert string to ThemeMode enum
+  // ─────────────────────────────────────────────
+  // STRING → ENUM
+  // ─────────────────────────────────────────────
   ThemeMode _stringToThemeMode(String value) {
     switch (value) {
       case 'Light':
@@ -67,23 +86,19 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// ══════════════════════════════════════════════════════════════════════════
-  /// 🔥 CRITICAL FIX: Listen to OS theme changes
-  /// ══════════════════════════════════════════════════════════════════════════
-  /// Called automatically when Android/iOS system theme changes.
-  /// Forces app rebuild ONLY when user has selected "System" theme.
+  // ─────────────────────────────────────────────
+  // SYSTEM BRIGHTNESS LISTENER
+  // ─────────────────────────────────────────────
   @override
   void didChangePlatformBrightness() {
-    super.didChangePlatformBrightness();
-    
-    // Only rebuild if theme is set to "System"
     if (_themeMode == ThemeMode.system) {
-      debugPrint('System brightness changed, rebuilding app...');
-      notifyListeners(); // ← This triggers MaterialApp rebuild
+      notifyListeners();
     }
   }
 
-  /// Clean up observer when controller is disposed
+  // ─────────────────────────────────────────────
+  // CLEANUP
+  // ─────────────────────────────────────────────
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);

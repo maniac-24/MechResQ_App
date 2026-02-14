@@ -2,13 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'theme.dart';
 import 'theme_controller.dart';
-import 'core/locale_provider.dart';
-import 'l10n/app_localizations.dart';
 import 'services/auth_service.dart';
 
 // SCREENS
@@ -32,15 +29,11 @@ Future<void> main() async {
   await Firebase.initializeApp();
   await initializeDateFormatting();
 
-  final localeProvider = LocaleProvider();
-  await localeProvider.init();
-
   runZonedGuarded(
     () => runApp(
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => ThemeController()),
-          ChangeNotifierProvider.value(value: localeProvider),
         ],
         child: const MechResQApp(),
       ),
@@ -62,75 +55,27 @@ class MechResQApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeController = context.watch<ThemeController>();
-    final localeProvider = context.watch<LocaleProvider>();
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
-      // ───────── LOCALIZATION ─────────
-      locale: localeProvider.locale,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-
-      // ───────── THEMES ─────────
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.hazardTheme(),
       themeMode: themeController.themeMode,
-
-      // ───────── LOCALIZED TITLE SAFELY ─────────
-      builder: (context, child) {
-        final l10n = AppLocalizations.of(context);
-        return Title(
-          title: l10n?.appName ?? 'MechResQ',
-          color: Theme.of(context).colorScheme.primary,
-          child: child!,
-        );
-      },
-
       home: const SplashScreen(),
-
       routes: {
         '/welcome': (_) => const WelcomeScreen(),
         '/login': (_) => LoginScreen(),
         '/forgot_password': (_) => ForgotPasswordScreen(),
-
-        // REGISTER
         '/register_user': (_) => const UserRegisterScreen(),
         '/register_mechanic': (_) => const MechanicRegisterScreen(),
         '/shop_location_picker': (_) => ShopLocationPickerScreen(),
-
-        // USER
         '/home': (_) => const MechanicListScreen(),
         '/profile': (_) => ProfileScreen(),
         '/my_requests': (_) => MyRequestsScreen(),
         '/create_request': (_) => const CreateRequestScreen(),
         '/request_success': (_) => const RequestSuccessScreen(),
         '/settings': (_) => const SettingsScreen(),
-
-        // MECHANIC
         '/mechanic_root': (_) => const MechanicRootScreen(),
-      },
-
-      onUnknownRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (context) {
-            final l10n = AppLocalizations.of(context);
-            return Scaffold(
-              body: Center(
-                child: Text(
-                  l10n != null
-                      ? '${l10n.error}: ${settings.name ?? "unknown"}'
-                      : 'Route not found: ${settings.name}',
-                ),
-              ),
-            );
-          },
-        );
       },
     );
   }
@@ -157,50 +102,60 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _decideNavigation() async {
+    // Small splash delay
     await Future.delayed(const Duration(milliseconds: 800));
+
     if (!mounted) return;
 
-    final isLoggedIn = await _auth.isLoggedIn();
+    final isLoggedIn = _auth.isLoggedIn();
 
     if (!isLoggedIn) {
-      _go('/welcome');
+      _navigate('/welcome');
       return;
     }
 
     final role = await _auth.getRole();
 
+    if (!mounted) return;
+
     switch (role) {
       case 'mechanic':
-        _go('/mechanic_root');
+        _navigate('/mechanic_root');
         break;
       case 'user':
-        _go('/home');
+        _navigate('/home');
         break;
       default:
         await _auth.logout();
-        _go('/welcome');
+        _navigate('/welcome');
     }
   }
 
-  void _go(String route) {
+  void _navigate(String route) {
     Navigator.pushReplacementNamed(context, route);
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: scheme.surface,
       body: Center(
-        child: Text(
-          l10n?.appName ?? 'MechResQ',
-          style: TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: scheme.primary,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: scheme.primary),
+            const SizedBox(height: 16),
+            Text(
+              'MechResQ',
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: scheme.primary,
+              ),
+            ),
+          ],
         ),
       ),
     );

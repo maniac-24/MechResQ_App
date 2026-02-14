@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/secondary_button.dart';
-import '../l10n/app_localizations.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -11,7 +10,6 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: SafeArea(
@@ -32,26 +30,11 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 18),
 
-              Text(
-                l10n.welcomeTitle,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: scheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              
 
               const SizedBox(height: 10),
 
-              Text(
-                l10n.welcomeSubtitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: scheme.onSurface.withOpacity(0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
+              
 
               const SizedBox(height: 28),
 
@@ -74,29 +57,11 @@ class WelcomeScreen extends StatelessWidget {
 
               const Spacer(),
 
-              PrimaryButton(
-                text: l10n.loginButton,
-                onPressed: () => Navigator.pushNamed(context, '/login'),
-              ),
+              
 
               const SizedBox(height: 12),
 
-              SecondaryButton(
-                text: l10n.createUserAccountButton,
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/register_user'),
-              ),
-
               const SizedBox(height: 12),
-
-              TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/register_mechanic'),
-                child: Text(
-                  l10n.mechanicRegisterPrompt,
-                  style: TextStyle(color: scheme.primary),
-                ),
-              ),
             ],
           ),
         ),
